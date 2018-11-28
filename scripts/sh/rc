@@ -10,8 +10,6 @@ ulimit -Sc 0
 trap : 2 3
 
 # set up default values for environment
-hostname=panda
-domain=dark.net
 pname=${0:-rc}
 #PATH=/bin:/sbin:/usr/bin:/usr/sbin
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
@@ -47,11 +45,11 @@ set_hostname () {
   local f=/proc/sys/kernel/hostname
 
   # directly set the host name without calling "hostname"
-  test -f "$f" && echo "panda" > "$f"
+  test -f "$f" && echo -n "panda" > "$f"
 
   # directly set the domain name with calling "domainname"
   f=/proc/sys/kernel/domainname
-  test -f "$f" && echo "dark.net" > "$f"
+  test -f "$f" && echo -n "dark.net" > "$f"
 }
 
 loopback_up () {
@@ -87,6 +85,9 @@ mount_pseudofs () {
   mount_dev
   mount_run
 }
+
+## load additional service function definitions
+#test -f /etc/rc.d/rc.common && . /etc/rc.d/rc.common
 
 start () {
   echo -e "\n\033[1;32;44m  ${pname}: Booting ...  \033[0m\n"
