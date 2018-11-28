@@ -1,0 +1,5 @@
+
+changes in 0.4.3 (from version 0.4):
+
+- C code compiles as pure C89 now
+
