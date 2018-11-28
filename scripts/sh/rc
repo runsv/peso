@@ -11,6 +11,7 @@ trap : 2 3
 
 # set up default values for environment
 pname=${0:-rc}
+subr=/etc/rc.d/rc.subr
 #PATH=/bin:/sbin:/usr/bin:/usr/sbin
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 PATH=${PATH}:/busybox:/usr/busybox:/toybox:/usr/toybox
@@ -86,8 +87,8 @@ mount_pseudofs () {
   mount_run
 }
 
-## load additional service function definitions
-#test -f /etc/rc.d/rc.common && . /etc/rc.d/rc.common
+## load additional service function/subroutine definitions
+#test -f "${subr:=/etc/rc.d/rc.subr}" -a -r "$subr" -a -s "$subr" && . "$subr"
 
 start () {
   echo -e "\n\033[1;32;44m  ${pname}: Booting ...  \033[0m\n"
@@ -109,11 +110,6 @@ esac
 
 exit 0
 
-########################################################################
-#
-# Description : Run Level Control Functions
-#             : Thierry Nuttens - tnut@nutyx.org
-#
 ########################################################################
 
 NORMAL="\\033[0;39m"         # Standard console grey
