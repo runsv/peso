@@ -1,0 +1,6 @@
+
+Contains scripts written in shell, Lua, and Perl5.
+
+exts6rcsvc.px is a Perl5 script that converts a given scan directory
+containing s6-rc service dirs into Lua scripts.
+
