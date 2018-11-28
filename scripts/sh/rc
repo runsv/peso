@@ -1,0 +1,847 @@
+#!/bin/mksh
+# -*- shell -*-
+
+# environmental setup
+set +auf
+umask 022
+ulimit -Sc 0
+## handle keyboard interrupts
+#trap : SIGINT SIGQUIT
+trap : 2 3
+
+# set up default values for environment
+hostname=panda
+domain=dark.net
+pname=${0:-rc}
+#PATH=/bin:/sbin:/usr/bin:/usr/sbin
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+PATH=${PATH}:/busybox:/usr/busybox:/toybox:/usr/toybox
+export PATH
+bb=/sbin/busybox
+sh=/bin/mksh
+#sh=/bin/dash
+test -f "$sh" -a -x "$sh" && export SHELL=$sh
+#test -t 0 -o -t 1 -o -t 2 && export TERM=linux
+cd /
+
+#$bb mkdir -pm 0755 /sys
+#$bb mount -wt sysfs sysfs /sys
+
+$bb mkdir -pm 0755 /run/lock /run/sv /run/log /run/Log /run/monit /run/utmps \
+  /run/sv/perp /run/sv/six /run/sv/encore /run/sv/runit \
+  /run/log/perp /run/log/six /run/log/encore /run/log/runit \
+  /var/log/sv/six /var/log/sv/encore /var/log/sv/perp /var/log/sv/perpd
+#$bb cp /etc/monitrc /run/monit
+d=/var/sv
+#test -d "$d" && $bb cp -rL $d/runit $d/perp $d/encore $d/six /run/sv
+test -d "$d" && $bb cp -rL "$d"/???* /run/sv
+
+#if test -d /etc/runit/sh ; then
+#  for i in /etc/runit/sh/S?*
+#  do
+#    test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
+#  done
+#fi
+
+set_hostname () {
+  local f=/proc/sys/kernel/hostname
+
+  # directly set the host name without calling "hostname"
+  test -f "$f" && echo "panda" > "$f"
+
+  # directly set the domain name with calling "domainname"
+  f=/proc/sys/kernel/domainname
+  test -f "$f" && echo "dark.net" > "$f"
+}
+
+loopback_up () {
+  :
+}
+
+loopback_down () {
+  :
+}
+
+# mount /proc and /sys
+mount_proc () {
+  mount -wt proc proc /proc
+}
+
+mount_sys () {
+  :
+}
+
+mount_dev () {
+  :
+}
+
+## Mount /run as tmpfs so that runtime data are not written to disk
+mount_run () {
+  mkdir -pm 0755 /run
+  mount -wt tmpfs -o mode=0755 tmpfs /run
+}
+
+mount_pseudofs () {
+  mount_proc
+  mount_sys
+  mount_dev
+  mount_run
+}
+
+start () {
+  echo -e "\n\033[1;32;44m  ${pname}: Booting ...  \033[0m\n"
+  mount_pseudofs
+}
+
+stop () {
+  echo -e "\n\033[1;32;44m  ${pname}: Bringing down the system ...  \033[0m\n"
+}
+
+case "${1:-start}" in
+  stop | *down* )
+    stop
+    ;;
+  * )
+    start
+    :: 
+esac
+
+exit 0
+
+########################################################################
+#
+# Description : Run Level Control Functions
+#             : Thierry Nuttens - tnut@nutyx.org
+#
+########################################################################
+
+NORMAL="\\033[0;39m"         # Standard console grey
+SUCCESS="\\033[1;32m"        # Success is green
+WARNING="\\033[1;33m"        # Warnings are yellow
+FAILURE="\\033[1;31m"        # Failures are red
+INFO="\\033[1;36m"           # Information is light cyan
+BRACKET="\\033[1;34m"        # Brackets are blue
+
+# Use a colored prefix
+BMPREFIX="     "
+SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
+FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
+WARNING_PREFIX="${WARNING} *** ${NORMAL}"
+
+SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
+FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
+WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
+
+BOOTLOG=/run/bootlog
+
+log_success_msg2 () {
+    if [ "$verbose"  == "no" ]; then 
+      return 0
+    fi
+    echo -n -e "${BMPREFIX}${@}"
+    echo -e "${CURS_ZERO}${SUCCESS_PREFIX}${SET_COL}${SUCCESS_SUFFIX}"
+    echo " OK" >> ${BOOTLOG}
+    return 0
+}
+
+log_failure_msg () {
+    echo -n -e "${BMPREFIX}${@}"
+    echo -e "${CURS_ZERO}${FAILURE_PREFIX}${SET_COL}${FAILURE_SUFFIX}"
+    # Strip non-printable characters from log file
+    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
+    echo -e "${STAMP} ${logmessage} FAIL" >> ${BOOTLOG}
+    return 0
+}
+
+log_failure_msg2 () {
+    echo -n -e "${BMPREFIX}${@}"
+    echo -e "${CURS_ZERO}${FAILURE_PREFIX}${SET_COL}${FAILURE_SUFFIX}"
+    echo "FAIL" >> ${BOOTLOG}
+    return 0
+}
+
+log_warning_msg () {
+    echo -n -e "${BMPREFIX}${@}"
+    echo -e "${CURS_ZERO}${WARNING_PREFIX}${SET_COL}${WARNING_SUFFIX}"
+    # Strip non-printable characters from log file
+    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
+    timespec
+    echo -e "${STAMP} ${logmessage} WARN" >> ${BOOTLOG}
+    return 0
+}
+
+log_info_msg () {
+    if [ "$verbose"  == "no" ]; then 
+       return 0
+    fi
+
+    echo -n -e "${BMPREFIX}${@}"
+    # Strip non-printable characters from log file
+    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
+    timespec
+    echo -n -e "${STAMP} ${logmessage}" >> ${BOOTLOG}
+    return 0
+}
+
+log_info_msg2 () {
+    if [ "$verbose"  == "no" ] ; then 
+       return 0
+    fi
+
+    echo -n -e "${@}"
+    # Strip non-printable characters from log file
+    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
+    echo -n -e "${logmessage}" >> ${BOOTLOG}
+    return 0
+}
+
+evaluate_retval () {
+   local error_value="${?}"
+
+   if test "${error_value:-}" -eq 0 ; then
+      if test "$verbose" != no ; then
+        log_success_msg2
+      fi
+   else
+      log_failure_msg2
+   fi
+}
+
+create_files () {
+   # Input to file descriptor 9 and output to stdin (redirection)
+   exec 9>&0 < /etc/sysconfig/createfiles
+
+   while read name type perm usr grp dtype maj min junk
+   do
+      # Ignore comments and blank lines.
+      case "${name}" in
+         ""|\#*) continue ;;
+      esac
+
+      # Ignore existing files.
+      if [ ! -e "${name}" ]; then
+         # Create stuff based on its type.
+         case "${type}" in
+            dir)
+               mkdir "${name}"
+               ;;
+            file)
+               :> "${name}"
+               ;;
+            dev)
+               case "${dtype}" in
+                  char)
+                     mknod "${name}" c ${maj} ${min}
+                     ;;
+                  block)
+                     mknod "${name}" b ${maj} ${min}
+                     ;;
+                  pipe)
+                     mknod "${name}" p
+                     ;;
+                  *)
+                     log_warning_msg "\nUnknown device type: ${dtype}"
+                     ;;
+               esac
+               ;;
+            *)
+               log_warning_msg "\nUnknown type: ${type}"
+               continue
+               ;;
+         esac
+      fi
+      # Set up the permissions, too even if it exist allready
+      chown ${usr}:${grp} "${name}"
+      chmod ${perm} "${name}"
+   done
+
+   # Close file descriptor 9 (end redirection)
+   exec 0>&9 9>&-
+   return 0
+}
+
+do_mount_virtualfs () {
+        if ! mountpoint /run >/dev/null; then
+                mount /run || failed=1
+        fi
+        mkdir -p /run/lock /run/shm
+        chmod 1777 /run/shm
+        log_info_msg "Mounting virtual file systems: ${INFO}/run"
+        if ! mountpoint /proc >/dev/null; then
+                log_info_msg2 " ${INFO}/proc"
+                mount -o nosuid,noexec,nodev /proc || failed=1
+        fi
+        if ! mountpoint /sys >/dev/null; then
+                log_info_msg2 " ${INFO}/sys"
+                mount -o nosuid,noexec,nodev /sys || failed=1
+        fi
+        if ! mountpoint /dev >/dev/null; then
+                log_info_msg2 " ${INFO}/dev"
+                mount -o mode=0755,nosuid /dev  || failed=1
+        fi
+
+        ln -sfn /run/shm /dev/shm
+	(exit ${failed})
+	evaluate_retval
+}
+
+start_localnet () {
+  test -r /etc/sysconfig/network && . /etc/sysconfig/network
+  test -r /etc/hostname && HOSTNAME=`cat /etc/hostname`
+  log_info_msg "Bringing up the loopback interface..."
+  ip addr add 127.0.0.1/8 label lo dev lo
+  ip link set lo up
+  evaluate_retval
+
+  log_info_msg "Setting hostname to ${HOSTNAME}..."
+  hostname ${HOSTNAME}
+  evaluate_retval
+}
+
+stop_localnet () {
+  log_info_msg "Bringing down the loopback interface..."
+  ip link set lo down
+  evaluate_retval
+}
+
+load_modules () {
+  # Assure that the kernel has module support.
+  [ -e /proc/modules ] || return 0
+  for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*.conf
+  do
+   [ ! -f $FILE ] && continue
+   # Continue with next if there's no modules file or there are no
+   # valid entries
+   [ -r $FILE ] || continue
+   egrep -qv '^($|#)' $FILE || continue
+   log_info_msg "Loading modules:"
+   break
+  done
+  for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*.conf
+    do
+     [ ! -f $FILE ] && continue
+     [ -r $FILE ] || continue
+     egrep -qv '^($|#)' $FILE || continue
+
+
+     while read module args; do
+         # Ignore comments and blank lines.
+         case "$module" in
+          ""|"#"*) continue ;;
+         esac
+
+         # Attempt to load the module, passing any arguments provided.
+         modprobe ${module} ${args} >/dev/null
+
+         # Print the module name if successful, otherwise take note.
+         if [ $? -eq 0 ]; then
+           log_info_msg2 " ${module}"
+         else
+          failedmod="${failedmod} ${module}"
+         fi
+     done < $FILE
+  done
+ # fi
+  # Print a message about successfully loaded modules on the correct line.
+  log_success_msg2
+  # Print a failure message with a list of any modules that
+  # may have failed to load.
+  if test -n "${failedmod}" ; then
+     log_failure_msg "Failed to load modules:${failedmod}"
+  fi
+
+  return 0
+}
+
+udev_start () {
+  log_info_msg "Populating /dev with device nodes... "
+
+  if ! grep -q '[[:space:]]sysfs' /proc/mounts; then
+     log_failure_msg2
+     msg="FAILURE:\n\nUnable to create "
+     msg="${msg}devices without a SysFS filesystem\n\n"
+     msg="${msg}After you press Enter, this system "
+     msg="${msg}will be halted and powered off.\n\n"
+     log_info_msg "$msg"
+     log_info_msg "Press Enter to continue..."
+     wait_for_user
+     /etc/rc.d/init.d/halt stop
+  fi
+
+  # Udev handles uevents itself, so we don't need to have
+  # the kernel call out to any binary in response to them
+  test -f /proc/sys/kernel/hotplug && echo > /proc/sys/kernel/hotplug
+  # Start the udev daemon to continually watch for, and act on, uevents
+  /sbin/udevd --daemon --resolve-names=never
+  # Now traverse /sys in order to "coldplug" devices that have
+  # already been discovered
+  /sbin/udevadm trigger --action=add    --type=subsystems
+  /sbin/udevadm trigger --action=add    --type=devices
+  /sbin/udevadm trigger --action=change --type=devices
+
+  # Now wait for udevd to process the uevents we triggered
+  if ! is_true "$OMIT_UDEV_SETTLE" ; then
+     /sbin/udevadm settle
+  fi
+
+  # If any LVM based partitions are on the system, ensure they
+  # are activated so they can be used.
+  test -x /sbin/vgchange && /sbin/vgchange -a y > /dev/null
+  log_success_msg2
+}
+
+udev_stop () {
+  udevadm control --exit
+  udevadm info --cleanup-db
+}
+
+set_clock () {
+   test -r /etc/sysconfig/clock && . /etc/sysconfig/clock
+
+   case "${UTC:-}" in
+    yes | true | 1 )
+      CLOCKPARAMS="${CLOCKPARAMS} --utc"
+      CLOCKMODE=utc
+      ;;
+    no | false | 0 )
+      CLOCKPARAMS="${CLOCKPARAMS} --localtime"
+      CLOCKMODE=localtime
+      ;;
+   esac
+
+   hwclock --hctosys ${CLOCKPARAMS} >/dev/null
+   log_info_msg "Setting hardware clock to ${CLOCKMODE}..."
+   evaluate_retval
+}
+
+save_clock () {
+   log_info_msg "Setting hardware clock..."
+   hwclock --systohc ${CLOCKPARAMS} >/dev/null
+   evaluate_retval
+}
+
+check_fs () {
+   if test -f /fastboot ; then
+     msg="/fastboot found, will omit "
+     msg="${msg} file system checks as requested.\n"
+     log_info_msg "${msg}"
+     return 0
+   fi
+
+   log_info_msg "Mounting root file system in read-only mode... "
+   mount -n -o remount,ro / >/dev/null
+
+   if [ ${?} != 0 ]; then
+     log_failure_msg2
+     msg="\n\nCannot check root "
+     msg="${msg}filesystem because it could not be mounted "
+     msg="${msg}in read-only mode.\n\n"
+     msg="${msg}After you press Enter, this system will be "
+     msg="${msg}halted and powered off.\n\n"
+     log_failure_msg "${msg}"
+
+     log_info_msg "Press Enter to continue..."
+     wait_for_user
+     /etc/rc.d/init.d/halt stop
+   else
+     log_success_msg2
+   fi
+
+   if [ -f /forcefsck ]; then
+     msg="\n/forcefsck found, forcing file"
+     msg="${msg} system checks as requested."
+     log_success_msg "$msg"
+     options="-f"
+   else
+     options=""
+   fi
+
+   log_info_msg "Checking file systems..."
+   # Note: -a option used to be -p; but this fails e.g. on fsck.minix
+   if is_true "$VERBOSE_FSCK"; then
+     fsck ${options} -a -A -C -T
+   else
+     fsck ${options} -a -A -C -T >/dev/null
+   fi
+
+   error_value=${?}
+
+   if [ "${error_value}" = 0 ]; then
+     log_success_msg2
+   fi
+
+   if [ "${error_value}" = 1 ]; then
+     msg="\nWARNING:\n\nFile system errors "
+     msg="${msg}were found and have been corrected.\n"
+     msg="${msg}You may want to double-check that "
+     msg="${msg}everything was fixed properly."
+     log_warning_msg "$msg"
+   fi
+
+   if [ "${error_value}" = 2 -o "${error_value}" = 3 ]; then
+     msg="\nWARNING:\n\nFile system errors "
+     msg="${msg}were found and have been been "
+     msg="${msg}corrected, but the nature of the "
+     msg="${msg}errors require this system to be rebooted.\n\n"
+     msg="${msg}After you press enter, "
+     msg="${msg}this system will be rebooted\n\n"
+     log_failure_msg "$msg"
+
+     log_info_msg "Press Enter to continue..."
+     wait_for_user
+     reboot -f
+   fi
+   if [ "${error_value}" -gt 3 -a "${error_value}" -lt 16 ]; then
+     msg="\nFAILURE:\n\nFile system errors "
+     msg="${msg}were encountered that could not be "
+     msg="${msg}fixed automatically.  This system "
+     msg="${msg}cannot continue to boot and will "
+     msg="${msg}therefore be halted until those "
+     msg="${msg}errors are fixed manually by a "
+     msg="${msg}System Administrator.\n\n"
+     msg="${msg}After you press Enter, this system will be "
+     msg="${msg}halted and powered off.\n\n"
+     log_failure_msg "$msg"
+
+     log_info_msg "Press Enter to continue..."
+     wait_for_user
+     /etc/rc.d/init.d/halt stop
+   fi
+
+   if [ "${error_value}" -ge 16 ]; then
+     msg="\nFAILURE:\n\nUnexpected Failure "
+     msg="${msg}running fsck.  Exited with error "
+     msg="${msg} code: ${error_value}."
+     log_failure_msg $msg
+     return ${error_value}
+   fi
+
+   return 0
+}
+
+mount_fs () {
+  log_info_msg "Remounting root file system in read-write mode..."
+  mount -o remount,rw / >/dev/null
+  evaluate_retval
+  # Remove fsck-related file system watermarks.
+  rm -f /fastboot /forcefsck
+  # Make sure /dev/pts exists
+  mkdir -p /dev/pts
+  # This will mount all filesystems that do not have _netdev in
+  # their option list.  _netdev denotes a network filesystem.
+  log_info_msg "Mounting remaining file systems..."
+  mount -a -O no_netdev >/dev/null
+  evaluate_retval
+  return $failed
+}
+
+unmount_fs () {
+  local KILLDELAY=0
+
+  # Don't unmount virtual file systems like /run
+  log_info_msg "Unmounting all other currently mounted file systems..."
+  while \
+   [ $KILLDELAY -lt 3 ] && \
+   ! umount -a -d -r -t notmpfs,nosysfs,nodevtmpfs,noproc,nodevpts >/dev/null
+  do
+    evaluate_retval
+	KILLDELAY=$((KILLDELAY+1))
+	do_stop_sendsignals
+  done
+  evaluate_retval
+  sync
+  KILLDELAY=0
+  # Make sure / is mounted read only (umount bug)
+  log_info_msg "Remonting root file system in read-only mode..."
+  while \
+   [ $KILLDELAY -lt 3 ] && \
+   ! mount -o remount,ro /
+  do
+     evaluate_retval
+     KILLDELAY=$((KILLDELAY+1))
+     do_stop_sendsignals
+  done
+  evaluate_retval
+
+  # Make all LVM volume groups unavailable, if appropriate
+  # This fails if swap or / are on an LVM partition
+  #if [ -x /sbin/vgchange ]; then /sbin/vgchange -an > /dev/null; fi
+}
+
+clean_fs () {
+  log_info_msg "Cleaning file systems:"
+
+  if [ "${SKIPTMPCLEAN}" = "" ]; then
+    log_info_msg2 " /tmp"
+    chmod 1777 /tmp
+    cd /tmp &&
+    find . -xdev -mindepth 1 ! -name lost+found -delete || failed=1
+  fi
+
+  : > /var/run/utmp
+
+  if grep -q '^utmp:' /etc/group ; then
+    chmod 664 /var/run/utmp
+    chgrp utmp /var/run/utmp
+  fi
+
+  (return ${failed})
+  evaluate_retval
+
+  if egrep -qv '^(#|$)' /etc/sysconfig/createfiles 2>/dev/null; then
+    log_info_msg "Creating files and directories... "
+    create_files      # Always returns 0
+    evaluate_retval
+  fi
+
+  return $failed
+}
+
+udev_retry () {
+  log_info_msg "Retrying failed uevents, if any..."
+
+  # As of udev-186, the --run option is no longer valid
+  #rundir=$(/sbin/udevadm info --run)
+  rundir=/run/udev
+  # From Debian: "copy the rules generated before / was mounted
+  # read-write":
+
+  for file in ${rundir}/tmp-rules--*; do
+    dest=${file##*tmp-rules--}
+    [ "$dest" = '*' ] && break
+    cat $file >> /etc/udev/rules.d/$dest
+    rm -f $file
+  done
+
+  # Re-trigger the uevents that may have failed,
+  # in hope they will succeed now
+  /bin/sed -e 's/#.*$//' /etc/sysconfig/udev_retry | /bin/grep -v '^$' | \
+  while read line ; do
+    for subsystem in $line ; do
+      /sbin/udevadm trigger --subsystem-match=$subsystem --action=add
+    done
+  done
+
+  # Now wait for udevd to process the uevents we triggered
+  if ! is_true "$OMIT_UDEV_RETRY_SETTLE"; then
+    /sbin/udevadm settle
+  fi
+
+  evaluate_retval
+}
+
+swap_on () {
+  log_info_msg "Activating all swap files/partitions..."
+  swapon -a
+  evaluate_retval
+}
+
+swap_off () {
+  log_info_msg "Deactivating all swap files/partitions..."
+  swapoff -a
+  evaluate_retval
+}
+
+setup_console () {
+  local failed=0
+
+  test -r /etc/sysconfig/console && . /etc/sysconfig/console
+  # See if we need to do anything
+  if [ -z "${KEYMAP}"         ] && [ -z "${KEYMAP_CORRECTIONS}" ] &&
+     [ -z "${FONT}"           ] && [ -z "${LEGACY_CHARSET}"     ] &&
+     ! is_true "${UNICODE}"; then
+    return 0
+  fi
+
+  # There should be no bogus failures below this line!
+  log_info_msg "Setting up Linux console..."
+
+  # Figure out if a framebuffer console is used
+  [ -d /sys/class/graphics/fb0 ] && use_fb=1 || use_fb=0
+
+  # Figure out the command to set the console into the
+  # desired mode
+  is_true "${UNICODE}" &&
+  MODE_COMMAND="echo -en '\033%G' && kbd_mode -u" ||
+  MODE_COMMAND="echo -en '\033%@\033(K' && kbd_mode -a"
+
+  # On framebuffer consoles, font has to be set for each vt in
+  # UTF-8 mode. This doesn't hurt in non-UTF-8 mode also.
+
+  ! is_true "${use_fb}" || [ -z "${FONT}" ] ||
+    MODE_COMMAND="${MODE_COMMAND} && setfont ${FONT}"
+
+  # Apply that command to all consoles mentioned in
+  # /etc/inittab. Important: in the UTF-8 mode this should
+  # happen before setfont, otherwise a kernel bug will
+  # show up and the unicode map of the font will not be
+  # used.
+
+  for TTY in `grep '^[^#].*respawn:/sbin/agetty' /etc/inittab |
+     grep -o '\btty[[:digit:]]*\b'`
+   do
+     openvt -f -w -c ${TTY#tty} -- \
+       /bin/sh -c "${MODE_COMMAND}" || failed=1
+   done
+
+  # Set the font (if not already set above) and the keymap
+  [ "${use_fb}" == "1" ] || [ -z "${FONT}" ] || setfont $FONT || failed=1
+
+  [ -z "${KEYMAP}" ] ||
+    loadkeys ${KEYMAP} >/dev/null 2>&1 ||
+    failed=1
+
+  [ -z "${KEYMAP_CORRECTIONS}" ] ||
+    loadkeys ${KEYMAP_CORRECTIONS} >/dev/null 2>&1 ||
+    failed=1
+
+  # Convert the keymap from $LEGACY_CHARSET to UTF-8
+  [ -z "$LEGACY_CHARSET" ] ||
+     dumpkeys -c "$LEGACY_CHARSET" | loadkeys -u >/dev/null 2>&1 ||
+     failed=1
+
+  # If any of the commands above failed, the trap at the
+  # top would set $failed to 1
+  ( return $failed )
+  evaluate_retval
+
+  return $failed
+}
+
+do_start_sysctl () {
+  if test -f /etc/sysctl.conf ; then
+    log_info_msg "Setting kernel runtime parameters..."
+    sysctl -q -p
+    evaluate_retval
+  fi
+}
+
+do_start_network () {
+   do_config_network
+
+   case "${MANAGER}" in
+      networkmanager)
+         if [ -f /usr/sbin/NetworkManager ]; then
+            if [ ! -d /var/run/NetworkManager ]; then
+               install -d -o root -g root -m 755 /var/run/NetworkManager
+            fi
+            log_info_msg "Starting NetworkManager daemon..."
+            start_daemon /usr/sbin/NetworkManager
+            if [ "${NETWORKWAIT}" == "yes" ]; then
+               [ -z "${LINKDELAY}" ] && LINKDELAY=10
+               log_info_msg "Waiting for network..."
+               nm-online -q --timeout=$LINKDELAY || nm-online -q -x --timeout=30
+               [ "$?" = "0" ] && log_success_msg "Network startup" || log_failure_msg "Network startup"
+               [ -n "${NETWORKDELAY}" ] && /bin/sleep ${NETWORKDELAY}
+            fi
+            evaluate_retval
+         else
+            echo "the package networkmanager seems not to be install"
+            echo "check the ${NETWORKCONFIG_FILE} file"
+         fi
+      ;;
+      wicd)
+         if [ -f /usr/bin/wicd ]; then
+            if [ -e $WICD_PIDFILE ]; then
+               echo "Wicd appears to already be running"
+               echo "If this is NOT the case, then remove"
+               echo "$WICD_PIDFILE, check the ${NETWORKCONFIG_FILE} file"
+               echo "and try again"
+            else
+               log_info_msg "Starting the wicd Daemon..."
+               start_daemon /usr/bin/wicd 1>/dev/null
+               evaluate_retval
+               if grep -v ^# /etc/fstab | grep _netdev > /dev/null; then
+                    while ! grep "nameserver" /etc/resolv.conf ;
+                        do
+                            if [ $NETWORKDELAY -gt 0 ]; then
+                               sleep 1
+                               echo -n .
+                               let NETWORKDELAY=$NETWORKDELAY-1
+                               if [ $NETWORKDELAY -lt 1 ]; then
+                                   log_failure_msg2 "Time out"
+                                   exit 1
+                               fi
+                            fi
+                        done
+                        log_success_msg2 "Network successfully configured..."
+               fi
+            fi
+         else
+            echo "the package wicd seems not to be install"
+            echo "check the ${NETWORKCONFIG_FILE} file"
+         fi
+      ;;
+      cli)
+         # Start all network interfaces
+         for file in /etc/sysconfig/ifconfig.*
+         do
+            interface=${file##*/ifconfig.}
+            # Skip if $file is * (because nothing was found)
+            if [ "${interface}" = "*" ]; then
+               continue
+            fi
+            if [ -f /etc/wpa_supplicant.conf.${interface} ] && [ -x /sbin/wpa_supplicant ]; then
+               wpa_supplicant -B -c/etc/wpa_supplicant.conf.${interface} -i${interface} \
+               -P /var/run/wpa_supplicant.${interface}
+               sleep 2
+            fi
+            /sbin/ifup ${interface}
+         done
+         evaluate_retval
+      ;;
+   esac
+}
+
+do_stop_network () {
+   do_config_network
+
+   case "${MANAGER}" in
+      networkmanager)
+         if [ -f /usr/sbin/NetworkManager ]; then
+            log_info_msg "Stopping NetworkManager daemon..."
+            killproc /usr/sbin/NetworkManager
+            evaluate_retval
+         else
+            echo "the package networkmanager seems not to be install"
+            echo "check the ${NETWORKCONFIG_FILE} file"
+         fi
+      ;;
+      wicd)
+         if [ -e $WICD_PIDFILE ]; then
+            log_info_msg "Stopping the wicd Daemon..."
+            wicd-cli -xyz 1>/dev/null
+            kill $(cat $WICD_PIDFILE)
+            evaluate_retval
+         else
+            echo "wicd appears not to be running..."
+            echo "check the ${NETWORKCONFIG_FILE} file"
+         fi
+      ;;
+      cli)
+         # Reverse list
+         net_files=""
+         for file in  /etc/sysconfig/ifconfig.*
+         do
+             net_files="${file} ${net_files}"
+         done
+
+         # Stop all network interfaces
+         for file in ${net_files}
+         do
+             interface=${file##*/ifconfig.}
+
+             # Skip if $file is * (because nothing was found)
+             if [ "${interface}" = "*" ]; then
+                 continue
+             fi
+             /sbin/ifdown ${interface}
+             if [ -f /var/run/wpa_supplicant.${interface} ]; then
+                 kill `cat /var/run/wpa_supplicant.${interface}`
+             fi
+         done
+         evaluate_retval
+      ;;
+   esac
+}
+

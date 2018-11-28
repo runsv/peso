@@ -1,0 +1,14 @@
+
+CC = gcc
+CFLAGS = -O2
+
+all : v
+
+clean :
+	&rm -f v.o v
+
+distclean :
+	&rm -f v.o v
+
+.PHONY :	all clean distclean
+
