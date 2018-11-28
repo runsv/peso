@@ -1,17 +1,26 @@
 #!/bin/mksh
 # -*- shell -*-
 
-# environmental setup
+## secure process environment
+## (shell settings, default permissions, process limits, signals)
 set +auf
 umask 022
 ulimit -Sc 0
-## handle keyboard interrupts
+## ignore keyboard interrupts
 #trap : SIGINT SIGQUIT
 trap : 2 3
 
-# set up default values for environment
-pname=${0:-rc}
-subr=/etc/rc.d/rc.subr
+## output color definitions
+#NORMAL="\\033[0;39m"         # Standard console grey
+#SUCCESS="\\033[1;32m"        # Success is green
+#WARNING="\\033[1;33m"        # Warnings are yellow
+#FAILURE="\\033[1;31m"        # Failures are red
+#INFO="\\033[1;36m"           # Information is light cyan
+#BRACKET="\\033[1;34m"        # Brackets are blue
+## set up default values for variables
+PNAME=${0:-rc}
+SUBR=/etc/rc.d/rc.subr
+BOOTLOG=/run/bootlog
 #PATH=/bin:/sbin:/usr/bin:/usr/sbin
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 PATH=${PATH}:/busybox:/usr/busybox:/toybox:/usr/toybox
@@ -42,6 +51,34 @@ test -d "$d" && $bb cp -rL "$d"/???* /run/sv
 #  done
 #fi
 
+## reverse a given "list"
+## (a string containing a white space separated sequence of substrings)
+rev () {
+  if test 0 -lt "$#" ; then
+    local i r=
+
+    for i in ${1:-} ; do
+      r="$i $r"
+    done
+
+    echo $r
+  fi
+}
+
+## check a given return value
+evret () {
+  local r=${1:-$?}
+
+  if test 0 -eq "$r" ; then
+    echo -e "\tOK"
+  else
+    echo -e "\tFAILED"
+  fi
+
+  return 0
+}
+
+## set default host and domain names
 set_hostname () {
   local f=/proc/sys/kernel/hostname
 
@@ -53,6 +90,10 @@ set_hostname () {
   test -f "$f" && echo -n "dark.net" > "$f"
 }
 
+#start_daemon () {
+#  pgrep "$1" || $@
+#}
+
 loopback_up () {
   :
 }
@@ -61,42 +102,66 @@ loopback_down () {
   :
 }
 
-# mount /proc and /sys
+## mount procfs on /proc
 mount_proc () {
   mount -wt proc proc /proc
 }
 
+## mount sysfs on /sys
 mount_sys () {
   :
 }
 
-mount_dev () {
-  :
-}
-
-## Mount /run as tmpfs so that runtime data are not written to disk
+## mount tmpfs on /run so that runtime data are not written to disk
 mount_run () {
   mkdir -pm 0755 /run
   mount -wt tmpfs -o mode=0755 tmpfs /run
 }
 
+## mount devtmpfs on /dev
+mount_dev () {
+  :
+}
+
+seed_run () {
+  mkdir -pm 755 /run/shm
+}
+
+seed_dev () {
+  mkdir -pm 755 /dev/shm /dev/mqueue
+}
+
 mount_pseudofs () {
   mount_proc
   mount_sys
-  mount_dev
   mount_run
+  seed_run
+  mount_dev
+  seed_dev
 }
 
 ## load additional service function/subroutine definitions
-#test -f "${subr:=/etc/rc.d/rc.subr}" -a -r "$subr" -a -s "$subr" && . "$subr"
+#test -f "${SUBR:=/etc/rc.d/rc.subr}" -a -r "$SUBR" -a -s "$SUBR" && . "$SUBR"
+
+single () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Entering single user mode ...  \033[0m\n"
+}
+
+multi () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
+}
+
+network () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
+}
 
 start () {
-  echo -e "\n\033[1;32;44m  ${pname}: Booting ...  \033[0m\n"
+  echo -e "\n\033[1;32;44m  ${PNAME}: Booting ...  \033[0m\n"
   mount_pseudofs
 }
 
 stop () {
-  echo -e "\n\033[1;32;44m  ${pname}: Bringing down the system ...  \033[0m\n"
+  echo -e "\n\033[1;32;44m  ${PNAME}: Bringing down the system ...  \033[0m\n"
 }
 
 case "${1:-start}" in
@@ -109,100 +174,6 @@ case "${1:-start}" in
 esac
 
 exit 0
-
-########################################################################
-
-NORMAL="\\033[0;39m"         # Standard console grey
-SUCCESS="\\033[1;32m"        # Success is green
-WARNING="\\033[1;33m"        # Warnings are yellow
-FAILURE="\\033[1;31m"        # Failures are red
-INFO="\\033[1;36m"           # Information is light cyan
-BRACKET="\\033[1;34m"        # Brackets are blue
-
-# Use a colored prefix
-BMPREFIX="     "
-SUCCESS_PREFIX="${SUCCESS}  *  ${NORMAL}"
-FAILURE_PREFIX="${FAILURE}*****${NORMAL}"
-WARNING_PREFIX="${WARNING} *** ${NORMAL}"
-
-SUCCESS_SUFFIX="${BRACKET}[${SUCCESS}  OK  ${BRACKET}]${NORMAL}"
-FAILURE_SUFFIX="${BRACKET}[${FAILURE} FAIL ${BRACKET}]${NORMAL}"
-WARNING_SUFFIX="${BRACKET}[${WARNING} WARN ${BRACKET}]${NORMAL}"
-
-BOOTLOG=/run/bootlog
-
-log_success_msg2 () {
-    if [ "$verbose"  == "no" ]; then 
-      return 0
-    fi
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${SUCCESS_PREFIX}${SET_COL}${SUCCESS_SUFFIX}"
-    echo " OK" >> ${BOOTLOG}
-    return 0
-}
-
-log_failure_msg () {
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${FAILURE_PREFIX}${SET_COL}${FAILURE_SUFFIX}"
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    echo -e "${STAMP} ${logmessage} FAIL" >> ${BOOTLOG}
-    return 0
-}
-
-log_failure_msg2 () {
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${FAILURE_PREFIX}${SET_COL}${FAILURE_SUFFIX}"
-    echo "FAIL" >> ${BOOTLOG}
-    return 0
-}
-
-log_warning_msg () {
-    echo -n -e "${BMPREFIX}${@}"
-    echo -e "${CURS_ZERO}${WARNING_PREFIX}${SET_COL}${WARNING_SUFFIX}"
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    timespec
-    echo -e "${STAMP} ${logmessage} WARN" >> ${BOOTLOG}
-    return 0
-}
-
-log_info_msg () {
-    if [ "$verbose"  == "no" ]; then 
-       return 0
-    fi
-
-    echo -n -e "${BMPREFIX}${@}"
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    timespec
-    echo -n -e "${STAMP} ${logmessage}" >> ${BOOTLOG}
-    return 0
-}
-
-log_info_msg2 () {
-    if [ "$verbose"  == "no" ] ; then 
-       return 0
-    fi
-
-    echo -n -e "${@}"
-    # Strip non-printable characters from log file
-    logmessage=`echo "${@}" | sed 's/\\\033[^a-zA-Z]*.//g'`
-    echo -n -e "${logmessage}" >> ${BOOTLOG}
-    return 0
-}
-
-evaluate_retval () {
-   local error_value="${?}"
-
-   if test "${error_value:-}" -eq 0 ; then
-      if test "$verbose" != no ; then
-        log_success_msg2
-      fi
-   else
-      log_failure_msg2
-   fi
-}
 
 create_files () {
    # Input to file descriptor 9 and output to stdin (redirection)
@@ -257,7 +228,7 @@ create_files () {
    return 0
 }
 
-do_mount_virtualfs () {
+mount_virtualfs () {
         if ! mountpoint /run >/dev/null; then
                 mount /run || failed=1
         fi
@@ -624,19 +595,27 @@ udev_retry () {
     /sbin/udevadm settle
   fi
 
-  evaluate_retval
+  evret "$?"
 }
 
 swap_on () {
   log_info_msg "Activating all swap files/partitions..."
   swapon -a
-  evaluate_retval
+  evret "$?"
 }
 
 swap_off () {
   log_info_msg "Deactivating all swap files/partitions..."
   swapoff -a
-  evaluate_retval
+  evret "$?"
+}
+
+run_sysctl () {
+  if test -f /etc/sysctl.conf ; then
+    log_info_msg "Setting kernel runtime parameters ..."
+    sysctl -q -p
+    evret "$?"
+  fi
 }
 
 setup_console () {
@@ -700,145 +679,7 @@ setup_console () {
   # If any of the commands above failed, the trap at the
   # top would set $failed to 1
   ( return $failed )
-  evaluate_retval
-
+  evret "$?"
   return $failed
-}
-
-do_start_sysctl () {
-  if test -f /etc/sysctl.conf ; then
-    log_info_msg "Setting kernel runtime parameters..."
-    sysctl -q -p
-    evaluate_retval
-  fi
-}
-
-do_start_network () {
-   do_config_network
-
-   case "${MANAGER}" in
-      networkmanager)
-         if [ -f /usr/sbin/NetworkManager ]; then
-            if [ ! -d /var/run/NetworkManager ]; then
-               install -d -o root -g root -m 755 /var/run/NetworkManager
-            fi
-            log_info_msg "Starting NetworkManager daemon..."
-            start_daemon /usr/sbin/NetworkManager
-            if [ "${NETWORKWAIT}" == "yes" ]; then
-               [ -z "${LINKDELAY}" ] && LINKDELAY=10
-               log_info_msg "Waiting for network..."
-               nm-online -q --timeout=$LINKDELAY || nm-online -q -x --timeout=30
-               [ "$?" = "0" ] && log_success_msg "Network startup" || log_failure_msg "Network startup"
-               [ -n "${NETWORKDELAY}" ] && /bin/sleep ${NETWORKDELAY}
-            fi
-            evaluate_retval
-         else
-            echo "the package networkmanager seems not to be install"
-            echo "check the ${NETWORKCONFIG_FILE} file"
-         fi
-      ;;
-      wicd)
-         if [ -f /usr/bin/wicd ]; then
-            if [ -e $WICD_PIDFILE ]; then
-               echo "Wicd appears to already be running"
-               echo "If this is NOT the case, then remove"
-               echo "$WICD_PIDFILE, check the ${NETWORKCONFIG_FILE} file"
-               echo "and try again"
-            else
-               log_info_msg "Starting the wicd Daemon..."
-               start_daemon /usr/bin/wicd 1>/dev/null
-               evaluate_retval
-               if grep -v ^# /etc/fstab | grep _netdev > /dev/null; then
-                    while ! grep "nameserver" /etc/resolv.conf ;
-                        do
-                            if [ $NETWORKDELAY -gt 0 ]; then
-                               sleep 1
-                               echo -n .
-                               let NETWORKDELAY=$NETWORKDELAY-1
-                               if [ $NETWORKDELAY -lt 1 ]; then
-                                   log_failure_msg2 "Time out"
-                                   exit 1
-                               fi
-                            fi
-                        done
-                        log_success_msg2 "Network successfully configured..."
-               fi
-            fi
-         else
-            echo "the package wicd seems not to be install"
-            echo "check the ${NETWORKCONFIG_FILE} file"
-         fi
-      ;;
-      cli)
-         # Start all network interfaces
-         for file in /etc/sysconfig/ifconfig.*
-         do
-            interface=${file##*/ifconfig.}
-            # Skip if $file is * (because nothing was found)
-            if [ "${interface}" = "*" ]; then
-               continue
-            fi
-            if [ -f /etc/wpa_supplicant.conf.${interface} ] && [ -x /sbin/wpa_supplicant ]; then
-               wpa_supplicant -B -c/etc/wpa_supplicant.conf.${interface} -i${interface} \
-               -P /var/run/wpa_supplicant.${interface}
-               sleep 2
-            fi
-            /sbin/ifup ${interface}
-         done
-         evaluate_retval
-      ;;
-   esac
-}
-
-do_stop_network () {
-   do_config_network
-
-   case "${MANAGER}" in
-      networkmanager)
-         if [ -f /usr/sbin/NetworkManager ]; then
-            log_info_msg "Stopping NetworkManager daemon..."
-            killproc /usr/sbin/NetworkManager
-            evaluate_retval
-         else
-            echo "the package networkmanager seems not to be install"
-            echo "check the ${NETWORKCONFIG_FILE} file"
-         fi
-      ;;
-      wicd)
-         if [ -e $WICD_PIDFILE ]; then
-            log_info_msg "Stopping the wicd Daemon..."
-            wicd-cli -xyz 1>/dev/null
-            kill $(cat $WICD_PIDFILE)
-            evaluate_retval
-         else
-            echo "wicd appears not to be running..."
-            echo "check the ${NETWORKCONFIG_FILE} file"
-         fi
-      ;;
-      cli)
-         # Reverse list
-         net_files=""
-         for file in  /etc/sysconfig/ifconfig.*
-         do
-             net_files="${file} ${net_files}"
-         done
-
-         # Stop all network interfaces
-         for file in ${net_files}
-         do
-             interface=${file##*/ifconfig.}
-
-             # Skip if $file is * (because nothing was found)
-             if [ "${interface}" = "*" ]; then
-                 continue
-             fi
-             /sbin/ifdown ${interface}
-             if [ -f /var/run/wpa_supplicant.${interface} ]; then
-                 kill `cat /var/run/wpa_supplicant.${interface}`
-             fi
-         done
-         evaluate_retval
-      ;;
-   esac
 }
 
