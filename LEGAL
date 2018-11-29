@@ -1,3 +1,12 @@
 
-This package is released into the public domain where legally possible.
+The authors release this package into the public domain where legally possible.
+This holds only for files solely copyrighted by the authors.
+Read the concerned files otherwise, copyright and license information
+are retained at the top.
+
+Exceptions:
+
+The files src/rcorcder.c src/hash.[ch] were taken from the NetBSD
+rcorder utility and remain under the NetBSD License (i. e. copyrighted
+and not in the public domain).
 
