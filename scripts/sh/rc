@@ -19,7 +19,8 @@ trap : 2 3
 #BRACKET="\\033[1;34m"        # Brackets are blue
 ## set up default values for variables
 PNAME=${0:-rc}
-SUBR=/etc/rc.d/rc.subr
+## where additional service subroutine/function definitions are stored
+#SUBR=/etc/rc.d/rc.subr
 BOOTLOG=/run/bootlog
 #PATH=/bin:/sbin:/usr/bin:/usr/sbin
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
@@ -31,9 +32,6 @@ sh=/bin/mksh
 test -f "$sh" -a -x "$sh" && export SHELL=$sh
 #test -t 0 -o -t 1 -o -t 2 && export TERM=linux
 cd /
-
-#$bb mkdir -pm 0755 /sys
-#$bb mount -wt sysfs sysfs /sys
 
 $bb mkdir -pm 0755 /run/lock /run/sv /run/log /run/Log /run/monit /run/utmps \
   /run/sv/perp /run/sv/six /run/sv/encore /run/sv/runit \
@@ -103,19 +101,35 @@ loopback_down () {
 }
 
 ## mount procfs on /proc
-mount_proc () {
-  mount -wt proc proc /proc
+mount_procfs () {
+  if mountpoint -q /proc ; then
+    echo "/proc is already a mount point, remounting ..."
+  else
+    mkdir -pm 0755 /sys && mount -wt proc proc /proc
+  fi
 }
 
 ## mount sysfs on /sys
-mount_sys () {
-  :
+mount_sysfs () {
+  if mountpoint -q /sys ; then
+    echo "/sys is already a mount point"
+  else
+    mkdir -pm 0755 /sys && mount -wt sysfs sysfs /sys
+  fi
 }
 
 ## mount tmpfs on /run so that runtime data are not written to disk
 mount_run () {
-  mkdir -pm 0755 /run
-  mount -wt tmpfs -o mode=0755 tmpfs /run
+  if mountpoint -q /run ; then
+    echo "/run is already a mount point"
+  else
+    mkdir -pm 0755 /run && mount -wt tmpfs -o mode=0755 tmpfs /run
+  fi
+}
+
+## mount misc aux fs under /sys
+mount_sys_misc () {
+  echo "/sys is already a mount point"
 }
 
 ## mount devtmpfs on /dev
@@ -124,106 +138,93 @@ mount_dev () {
 }
 
 seed_run () {
-  mkdir -pm 755 /run/shm
+  local f=
+
+  mkdir -pm 0755 /run/shm
+
+  for f in /run/utmp ${BOOTLOG:=/run/bootlog}
+  do
+    : > "$f"
+  done
 }
 
 seed_dev () {
-  mkdir -pm 755 /dev/shm /dev/mqueue
+  mkdir -pm 0755 /dev/shm /dev/mqueue
+}
+
+seed_fs () {
+  : > /var/run/utmp
 }
 
 mount_pseudofs () {
-  mount_proc
-  mount_sys
+  mount_procfs
+  mount_sysfs
   mount_run
+  mount_sys_misc
   seed_run
   mount_dev
   seed_dev
 }
 
-## load additional service function/subroutine definitions
-#test -f "${SUBR:=/etc/rc.d/rc.subr}" -a -r "$SUBR" -a -s "$SUBR" && . "$SUBR"
-
-single () {
-  echo -e "\n\033[1;32;44m  ${PNAME}: Entering single user mode ...  \033[0m\n"
-}
-
-multi () {
-  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
-}
-
-network () {
-  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
-}
-
-start () {
-  echo -e "\n\033[1;32;44m  ${PNAME}: Booting ...  \033[0m\n"
-  mount_pseudofs
-}
-
-stop () {
-  echo -e "\n\033[1;32;44m  ${PNAME}: Bringing down the system ...  \033[0m\n"
-}
-
-case "${1:-start}" in
-  stop | *down* )
-    stop
-    ;;
-  * )
-    start
-    :: 
-esac
-
-exit 0
-
+## create all kinds of files according to a given config file
 create_files () {
-   # Input to file descriptor 9 and output to stdin (redirection)
-   exec 9>&0 < /etc/sysconfig/createfiles
+   local conf=${1:-/etc/sysconfig/createfiles}
+
+   test -f "$conf" -a -s "$conf" -a -r "$conf" || return 0
+   local name type perm usr grp dtype maj min junk
+   ## input to file descriptor 9 and output to stdin (redirection)
+   exec 9>&0 < "$conf"
 
    while read name type perm usr grp dtype maj min junk
    do
-      # Ignore comments and blank lines.
-      case "${name}" in
-         ""|\#*) continue ;;
+      ## ignore comments and blank lines
+      case "${name:-}" in
+        "" | \#* ) continue ;;
       esac
 
-      # Ignore existing files.
-      if [ ! -e "${name}" ]; then
-         # Create stuff based on its type.
-         case "${type}" in
-            dir)
-               mkdir "${name}"
-               ;;
-            file)
-               :> "${name}"
-               ;;
-            dev)
-               case "${dtype}" in
-                  char)
-                     mknod "${name}" c ${maj} ${min}
-                     ;;
-                  block)
-                     mknod "${name}" b ${maj} ${min}
-                     ;;
-                  pipe)
-                     mknod "${name}" p
-                     ;;
-                  *)
-                     log_warning_msg "\nUnknown device type: ${dtype}"
-                     ;;
-               esac
-               ;;
-            *)
-               log_warning_msg "\nUnknown type: ${type}"
-               continue
-               ;;
-         esac
+      if test -e "${name:-}" ; then
+        ## ignore existing files for now
+        echo "$name already exists ..."
+      else
+        ## create stuff based on its type
+        case "${type:-}" in
+          dir )
+            mkdir -p -m 0755 "${name}"
+            ;;
+          file )
+            : > "${name}"
+            ;;
+          dev )
+            case "${dtype:-}" in
+              p* )
+                mknod -m ${perm:-0600} "${name}" p
+                ;;
+              c* )
+                mknod -m ${perm:-0600} "${name}" c ${maj:-} ${min:-}
+                ;;
+              b* )
+                mknod -m ${perm:-0600} "${name}" b ${maj:-} ${min:-}
+                ;;
+              * )
+                log_warning_msg "\nUnknown device type: ${dtype}"
+                ;;
+            esac
+            ;;
+          * )
+            log_warning_msg "\nUnknown type: ${type}"
+            continue
+            ;;
+        esac
       fi
-      # Set up the permissions, too even if it exist allready
-      chown ${usr}:${grp} "${name}"
-      chmod ${perm} "${name}"
+
+      ## set up the permissions now, also for already existing files
+      if test -e "${name:-}" ; then
+        chown ${usr:-0}:${grp:-0} "${name}"
+        chmod ${perm:-'a+rX,u+w,go-w'} "${name}"
+      fi
    done
 
-   # Close file descriptor 9 (end redirection)
+   ## close file descriptor 9 (end redirection)
    exec 0>&9 9>&-
    return 0
 }
@@ -232,10 +233,13 @@ mount_virtualfs () {
         if ! mountpoint /run >/dev/null; then
                 mount /run || failed=1
         fi
+
         mkdir -p /run/lock /run/shm
         chmod 1777 /run/shm
+
         log_info_msg "Mounting virtual file systems: ${INFO}/run"
-        if ! mountpoint /proc >/dev/null; then
+
+        if ! mountpoint /proc > /dev/null ; then
                 log_info_msg2 " ${INFO}/proc"
                 mount -o nosuid,noexec,nodev /proc || failed=1
         fi
@@ -254,55 +258,58 @@ mount_virtualfs () {
 }
 
 start_localnet () {
-  test -r /etc/sysconfig/network && . /etc/sysconfig/network
-  test -r /etc/hostname && HOSTNAME=`cat /etc/hostname`
+  test -f /etc/sysconfig/network && . /etc/sysconfig/network
+  test -f /etc/hostname && HOSTNAME=`cat /etc/hostname`
   log_info_msg "Bringing up the loopback interface..."
   ip addr add 127.0.0.1/8 label lo dev lo
   ip link set lo up
-  evaluate_retval
+  evret "$?"
 
-  log_info_msg "Setting hostname to ${HOSTNAME}..."
+  log_info_msg "Setting hostname to ${HOSTNAME} ..."
   hostname ${HOSTNAME}
-  evaluate_retval
+  evret "$?"
 }
 
 stop_localnet () {
-  log_info_msg "Bringing down the loopback interface..."
+  log_info_msg "Bringing down the loopback interface ..."
   ip link set lo down
-  evaluate_retval
+  evret "$?"
 }
 
 load_modules () {
-  # Assure that the kernel has module support.
-  [ -e /proc/modules ] || return 0
+  ## assure that the kernel has module support
+  test -f /proc/modules || return 0
+
   for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*.conf
   do
-   [ ! -f $FILE ] && continue
-   # Continue with next if there's no modules file or there are no
-   # valid entries
-   [ -r $FILE ] || continue
-   egrep -qv '^($|#)' $FILE || continue
-   log_info_msg "Loading modules:"
-   break
+    test \! -f $FILE && continue
+    ## continue with next if there's no modules file or there are no
+    ## valid entries
+    test -r $FILE || continue
+    egrep -qv '^($|#)' $FILE || continue
+    log_info_msg "Loading modules:"
+    break
   done
+
   for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*.conf
-    do
+  do
      [ ! -f $FILE ] && continue
      [ -r $FILE ] || continue
      egrep -qv '^($|#)' $FILE || continue
 
 
-     while read module args; do
-         # Ignore comments and blank lines.
+    while read module args
+    do
+         ## ignore comments and blank lines
          case "$module" in
-          ""|"#"*) continue ;;
+          "" | "#"* ) continue ;;
          esac
 
-         # Attempt to load the module, passing any arguments provided.
+         ## attempt to load the module, passing any arguments provided
          modprobe ${module} ${args} >/dev/null
 
          # Print the module name if successful, otherwise take note.
-         if [ $? -eq 0 ]; then
+         if test 0 -eq "$?" ; then
            log_info_msg2 " ${module}"
          else
           failedmod="${failedmod} ${module}"
@@ -681,4 +688,57 @@ setup_console () {
   evret "$r"
   return "$r"
 }
+
+## load additional service function/subroutine definitions
+#test -f "${SUBR:=/etc/rc.d/rc.subr}" -a -r "$SUBR" -a -s "$SUBR" && . "$SUBR"
+
+single () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Entering single user mode ...  \033[0m\n"
+  return 0
+}
+
+multi () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
+  return 0
+}
+
+network () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
+  return 0
+}
+
+start () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Booting ...  \033[0m\n"
+  mount_pseudofs
+  return 0
+}
+
+stop () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Bringing down the system ...  \033[0m\n"
+  return 0
+}
+
+##
+## main
+##
+
+## decide what to do based on the script's first argument
+case "${1:-}" in
+  start | boot )
+    start
+    exit 0
+    ;;
+  stop | *down* )
+    stop
+    exit 0
+    ;;
+  ?* )
+    echo "${0}: unknown option $1"
+    echo "usage: $0 start|stop"
+    #exit 100
+    ;;
+esac
+
+## we were just sourced to load function definitions in the case of no args
+return 0
 

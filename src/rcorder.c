@@ -1,8 +1,7 @@
 /*	$NetBSD: rcorder.c,v 1.18 2016/09/05 01:09:57 sevan Exp $	*/
 
 /*
- * Copyright (c) 2016, 2017 Seymour
- * All rights reserved.
+ * Copyright (c) 2016, 2017 Vaios
  *
  * Modyfied and ported to Linux.
  *
