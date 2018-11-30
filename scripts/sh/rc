@@ -26,22 +26,6 @@ test -f "$sh" -a -x "$sh" && export SHELL=$sh
 #test -t 0 -o -t 1 -o -t 2 && export TERM=linux
 cd /
 
-$bb mkdir -pm 0755 /run/lock /run/sv /run/log /run/Log /run/monit /run/utmps \
-  /run/sv/perp /run/sv/six /run/sv/encore /run/sv/runit \
-  /run/log/perp /run/log/six /run/log/encore /run/log/runit \
-  /var/log/sv/six /var/log/sv/encore /var/log/sv/perp /var/log/sv/perpd
-#$bb cp /etc/monitrc /run/monit
-d=/var/sv
-#test -d "$d" && $bb cp -rL $d/runit $d/perp $d/encore $d/six /run/sv
-test -d "$d" && $bb cp -rL "$d"/???* /run/sv
-
-#if test -d /etc/runit/sh ; then
-#  for i in /etc/runit/sh/S?*
-#  do
-#    test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
-#  done
-#fi
-
 ##
 ## main
 ##

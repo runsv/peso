@@ -1,0 +1,5 @@
+
+This directory contains some example configuration files.
+
+bbox_inittab is an example inittab file for use with BusyBox init.
+

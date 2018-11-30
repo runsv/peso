@@ -1,0 +1,212 @@
+#pies pragma next pies /etc/pies.init
+#pies pragma stop
+## Get out of GNU Pies and let it read its own config file
+## since it may be limited to pure SysV /etc/inittab syntax.
+##
+## /etc/inittab init(8) configuration for Busy/ToyBox
+##
+## Note, BusyBox init doesn't support runlevels.  The runlevels field is
+## completely ignored by BusyBox init. If you want runlevels, use sysvinit.
+##
+## Format for each entry: <id>:<runlevels>:<action>:<process>
+##
+## <id>: WARNING: This field has a non-traditional meaning for BusyBox init!
+##
+##	The id field is used by BusyBox init to specify the controlling tty for
+##	the specified process to run on.  The contents of this field are
+##	appended to "/dev/" and used as-is.  There is no need for this field to
+##	be unique, although if it isn't you may have strange results.  If this
+##	field is left blank, then the init's stdin/out will be used.
+##
+## <runlevels>: The runlevels field is completely ignored.
+##
+## <action>: Valid actions include: sysinit, respawn, askfirst, wait, once,
+##                                  restart, ctrlaltdel, and shutdown.
+##
+##       Note: askfirst acts just like respawn, but before running the specified
+##       process it displays the line "Please press Enter to activate this
+##       console." and then waits for the user to press enter before starting
+##       the specified process.
+##
+##       Note: unrecognized actions (like initdefault) will cause init to emit
+##       an error message, and then go along with its business.
+##
+## <process>: Specifies the process to be executed and it's command line.
+##
+## BusyBox init uses
+##	PATH=/sbin:/usr/sbin:/bin:/usr/bin
+## as search PATH
+##
+
+## what to do at the "Three Finger Salute"
+::ctrlaltdel:/sbin/busybox reboot
+
+## what to do when restarting the init process
+::restart:/sbin/busybox chvt 1
+::restart:/sbin/busybox sync
+::restart:/sbin/openrc shutdown
+#::restart:/etc/rc.d/rc.0
+::restart:/sbin/busybox init
+
+## what to do at system boot
+#::sysinit:/sbin/busybox printf "\r\n\r\033[1;32;44m  init: The system is coming up. Please wait ...  \033[0m\r\n\r\n"
+#::sysinit:/sbin/busybox echo the system is coming up
+## system initialization, mount local filesystems, etc
+#::sysinit:/sbin/busybox echo activating swap
+#::sysinit:/sbin/busybox swapon -a
+::sysinit:/sbin/openrc sysinit
+## further system initialization, brings up the boot runlevel
+::sysinit:/sbin/openrc boot
+::sysinit:/sbin/busybox hostname panda
+## brings up the OpenRC default runlevel
+#::sysinit:/sbin/openrc default
+#::sysinit:/bin/mksh /etc/rc.d/rc.S
+#::sysinit:/sbin/busybox ash /etc/rc.d/rc.S
+#::sysinit:/sbin/runtool -s -m 0022 -c / -R c=0 -E /etc/ENV /bin/runlua /etc/runit/rc.lua boot
+::sysinit:/sbin/busybox mkdir -pm 755 /run/utmps /run/lock /run/lvm /run/sv /run/log /run/Log /run/perp /run/sv/runit /run/sv/perp /run/sv/six /run/sv/encore /run/log/six
+::sysinit:/sbin/pututmpid reboot
+
+## what to do when going multi user
+#::wait:/sbin/ninit-runlevel 3 echo ninit-runlevel 3
+#::wait:/sbin/busybox mkdir -pm 755 /run/utmps /run/lock /run/lvm /run/sv /run/log /run/Log /run/sv/runit /run/sv/perp /run/sv/six /run/sv/encore /run/log/six
+::wait:/sbin/runtool -s -m 0022 -c /run -R c=0 /sbin/busybox mkdir -pm 755 utmps lock lvm log Log perp service sv sv/runit sv/perp sv/six sv/encore log/six log/perp log/encore
+::wait:/sbin/runtool -s -m 0022 -c /var/log -R c=0 /sbin/busybox mkdir -pm 755 sv sv/six sv/perp sv/perpd sv/encore sv/acpid sv/utmpd sv/wtmpd
+#::wait:/sbin/busybox cp -r /var/sv/runit /var/sv/perp /var/sv/six /var/sv/encore /run/sv
+#::wait:/sbin/runtool -s -m 0022 -c / -R c=0 /sbin/busybox cp -r /var/sv/runit /var/sv/perp /var/sv/six /var/sv/encore /run/sv
+::wait:/sbin/runtool -s -m 0022 -c /var/sv -R c=0 /sbin/busybox cp -r runit perp six encore /run/sv
+#::wait:/sbin/busybox printf "\n\r\033[1;32;44m  init: Entering multi user mode ...  \033[0m\r\n\r\n"
+#::wait:/sbin/busybox echo entering multi user mode
+#::wait:/sbin/busybox ash /etc/rc.d/rc.M
+#::wait:/sbin/openrc default
+::wait:/sbin/openrc ninit
+#::wait:/bin/s6-rc change ok-all
+#::wait:/sbin/busybox printf "\r\033[1;32;44m  init: Starting udevd ...  \033[0m\r\n"
+::wait:/sbin/busybox echo starting udevd
+::wait:/sbin/busybox start-stop-daemon -S -x /sbin/udevd -- --daemon --children-max=2
+::wait:/sbin/udevadm trigger --action=add --type=subsystems
+::wait:/sbin/udevadm trigger --action=add --type=devices
+::wait:/sbin/udevadm settle
+#::once:/sbin/busybox start-stop-daemon -S -c nobody -x /bin/rxstack -- -d -p 5757
+#::once:/sbin/busybox start-stop-daemon -S -x /usr/local/bin/rxapi
+#::once:/sbin/busybox mdev -s
+#::once:/sbin/busybox chvt 2
+
+## what to do at system shutdown
+::shutdown:/sbin/busybox chvt 1
+#::shutdown:/sbin/ninit-runlevel 0 echo ninit-runlevel 0
+#::shutdown:/sbin/pututmpid halt
+::shutdown:/sbin/busybox halt -w
+::shutdown:/sbin/busybox sync
+#::shutdown:/sbin/busybox printf "\r\n\r\033[1;32;44m  init: Shutting down the system ...  \033[0m\r\n\r\n"
+#::shutdown:/sbin/busybox echo shutting down the system
+::shutdown:/sbin/busybox echo stopping process supervisors
+#::shutdown:/bin/s6-rc -da change
+#::shutdown:/sbin/busybox start-stop-daemon -K -s HUP -u 0 -n runsvdir
+#::shutdown:/sbin/busybox killall -q -HUP runsvdir
+#::shutdown:/sbin/busybox killall -q -TERM runsv
+#::shutdown:/sbin/busybox killall -q -TERM runsvdir rundeux svscan s6-svscan perpd
+::shutdown:/sbin/busybox killall -q -TERM perpboot s6-svscan svscan runsvdir
+#::shutdown:/sbin/busybox killall -q -TERM runsvdir rundeux svscan s6-svscan perpd supervise s6-supervise
+#::shutdown:/sbin/svc -+dx /run/sv/encore/?* /run/sv/encore/?*/log
+#::shutdown:/bin/s6-svscanctl -t /run/sv/six
+#::shutdown:/bin/s6-svwait -a -D -t 3000 /run/sv/six/?* && echo s6 services are now down
+::shutdown:/bin/s6-svwait -a -D -t 3000 /run/sv/six/?*
+::shutdown:/sbin/busybox echo stopping udevd
+::shutdown:/sbin/udevadm control --exit
+#::shutdown:/sbin/runtool -s -m 0022 -c / -R c=0 -E /etc/ENV /bin/mksh /etc/rc.d/rc.0
+#::shutdown:/sbin/busybox ash /etc/rc.d/rc.0
+#::shutdown:/sbin/runtool -s -m 0022 -c / -R c=0 -E /etc/ENV /bin/runlua /etc/runit/rc.lua shutdown
+## Shuts down the system via OpenRC
+::shutdown:/sbin/openrc shutdown
+::shutdown:/sbin/busybox echo killing remaining processes
+::shutdown:/sbin/busybox killall5 -TERM -o 1
+::shutdown:/sbin/busybox killall5 -HUP -o 1
+::shutdown:/sbin/busybox killall5 -INT -o 1
+#::shutdown:/sbin/busybox sleep 1.5
+::shutdown:/sbin/busybox killall5 -KILL -o 1
+::shutdown:/sbin/busybox ip link set lo down
+::shutdown:/sbin/busybox sync
+::shutdown:/sbin/busybox echo deactivating swap
+::shutdown:/sbin/busybox swapoff -a
+::shutdown:/sbin/busybox echo unmounting file systems
+#::shutdown:/sbin/busybox umount -n -r -a
+::shutdown:/bin/umount -v -r -n -a -t nosysfs,noproc,nodevtmpfs,notmpfs,nodevpts,nomqueue,nopstore,nocgroup,noconfigfs,nodebugfs,nosecurityfs,nobinfmt_misc
+::shutdown:/sbin/busybox echo remounting rootfs read only
+#::shutdown:/sbin/busybox mount -v -n -o remount,ro /
+::shutdown:/bin/mount -v -n -o remount,ro /
+#::shutdown:/sbin/busybox sync
+#::shutdown:/sbin/busybox echo deactivating LVM volume groups
+#::shutdown:/sbin/vgchange -an --ignorelockingfailure
+#::shutdown:/sbin/busybox echo deactivating crypted LVM volume groups
+#::shutdown:for v in $( /sbin/dmsetup ls --target crypt --exec "/sbin/dmsetup info -c --noheadings -o open,name" ) ; do test ${v%%:*} = "0" && /sbin/cryptsetup close ${v##*:} ; done
+#::shutdown:/sbin/vgchange -an --ignorelockingfailure
+#::shutdown:/sbin/busybox printf "\r\n\r\033[1;31;44m  init: The system is going down NOW !  \033[0m\r\n\r\n"
+#::shutdown:/sbin/busybox echo the system is going down NOW
+
+## /bin/sh invocations on selected ttys
+##
+## Note below that we prefix the shell commands with a "-" to indicate to the
+## shell that it is supposed to be a login shell.  Normally this is handled by
+## login, but since we are bypassing login in this case, BusyBox lets you do
+## this yourself...
+##
+## Start an "askfirst" shell on the console (whatever that may be)
+#::askfirst:-/bin/sh
+## Start an "askfirst" shell on /dev/tty2-4
+#tty2::askfirst:-/bin/sh
+
+## These are the standard console login gettys in multiuser mode:
+## getty invocations for selected ttys
+## BusyBox getty
+tty1::respawn:/sbin/busybox getty 38400 tty1 linux
+tty2::respawn:/sbin/busybox getty -I c 38400 tty2 linux
+tty3::respawn:/sbin/busybox getty -I c 38400 tty3 linux
+tty4::respawn:/sbin/busybox getty -I c 38400 tty4 linux
+tty5::respawn:/sbin/busybox getty -I c 38400 tty5 linux
+tty6::respawn:/sbin/busybox getty -I c 38400 tty6 linux
+## agetty
+#tty1::respawn:/sbin/agetty -J tty1 38400 linux
+#tty2::respawn:/sbin/agetty tty2 38400 linux
+#tty3::respawn:/sbin/agetty tty3 38400 linux
+#tty4::respawn:/sbin/agetty tty4 38400 linux
+#tty5::respawn:/sbin/agetty tty5 38400 linux
+#tty6::respawn:/sbin/agetty tty6 38400 linux
+#tty1::respawn:/sbin/agetty --noclear tty1 linux
+#tty1::respawn:/sbin/agetty -J tty1 linux
+#tty2::respawn:/sbin/agetty tty2 linux
+#tty3::respawn:/sbin/agetty tty3 linux
+#tty4::respawn:/sbin/agetty tty4 linux
+#tty5::respawn:/sbin/agetty tty5 linux
+#tty6::respawn:/sbin/agetty tty6 linux
+## ngetty
+#::respawn:/sbin/ngetty tty1 tty2 tty3 tty4 tty5 tty6
+#::respawn:/sbin/ngetty /dev/tty1 /dev/tty2 /dev/tty3 /dev/tty4 /dev/tty5 /dev/tty6
+#::respawn:/sbin/ngetty-argv .-e.-S.-d/.-s1.--./sbin/%U.%U.1.2.3.4.5.6 ngetty
+#::respawn:/sbin/ngetty-argv .-e,HOME=/,TERM=linux.-S.-d/.-s1.--./sbin/%U.%U.1.2.3.4.5.6 ngetty
+
+## mdev
+#::respawn:/sbin/busybox uevent /sbin/busybox mdev
+## Regina Rexx stack daemon providing external queues to Regina programs
+#::respawn:/sbin/busybox chpst -P -c 0 -u nobody /bin/rxstack -p 5757
+#::respawn:/sbin/runtool -s -m 0022 -c / -R c=0 -u nobody /bin/rxstack -p 5757
+
+## process supervisors
+## daemontools encore
+#::respawn:/sbin/busybox ash /etc/inid/bbencore.sh start
+#::respawn:/sbin/svscan /run/sv/encore Log
+#::respawn:/sbin/runtool -s -m 0022 -c / -R c=0 -E /etc/ENV /sbin/svscan /run/sv/encore Log
+## s6
+#::respawn:/sbin/busybox runsv /run/sv/runit/six
+#::respawn:/bin/s6-svscan -St 0 /run/sv/six
+::respawn:/sbin/runtool -s -m 0022 -c / -R c=0 -E /etc/ENV /bin/s6-svscan -St 0 /run/sv/six
+## perp
+#::respawn:/sbin/busybox runsv /run/sv/runit/perpd
+#::respawn:/sbin/perpboot /run/sv/perp
+#::respawn:/sbin/runtool -s -m 0022 -c / -R c=0 -E /etc/ENV /sbin/perpboot /run/sv/perp
+#::respawn:/sbin/busybox ash /etc/inid/bbperp.sh start
+#::respawn:/sbin/runtool -s -m 0022 -c / -R c=0 -F 2=1 -E /etc/ENV /sbin/rundeux -L init /sbin/perpd -a 0 /run/sv/perp :: /bin/s6-log T /run/log/perp
+#::respawn:/sbin/runtool -s -m 0022 -c / -R c=0 -F 2=1 -E /etc/ENV /sbin/rundeux -L init /sbin/perpd -a 0 /run/sv/perp :: /sbin/runtool -s -m 0022 -c / -R c=0 -u nobody /bin/s6-log T /var/log/sv/perp
+## runit
+#::respawn:/sbin/busybox runsvdir -P /run/sv/runit ....................................................................................................................
+#::respawn:/sbin/runtool -s -m 0022 -c / -R c=0 -E /etc/ENV /sbin/busybox runsvdir -P /run/sv/runit ....................................................................................................................
+

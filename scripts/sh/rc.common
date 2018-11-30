@@ -27,12 +27,13 @@ d=/var/sv
 #test -d "$d" && $bb cp -rL $d/runit $d/perp $d/encore $d/six /run/sv
 test -d "$d" && $bb cp -rL "$d"/???* /run/sv
 
-#if test -d /etc/runit/sh ; then
-#  for i in /etc/runit/sh/S?*
-#  do
-#    test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
-#  done
-#fi
+start_scripts () {
+  if test -d /etc/runit/sh ; then
+    for i in /etc/runit/sh/S?* ; do
+      test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
+    done
+  fi
+}
 
 ## secure default process environment
 ## (shell settings, default permissions, process limits, signals)
@@ -119,6 +120,8 @@ mount_sysfs () {
     echo "/sys is already a mount point"
   else
     mkdir -pm 0755 /sys && mount -wt sysfs sysfs /sys
+sysfs_opts=nodev,noexec,nosuid
+mount -n -t sysfs -o ${sysfs_opts} sysfs /sys
   fi
 }
 
@@ -133,7 +136,85 @@ mount_run () {
 
 ## mount misc aux fs under /sys
 mount_sys_misc () {
-  echo "/sys is already a mount point"
+	## Setup Kernel Support for securityfs
+	if [ -d /sys/kernel/security ] && \
+		! mountinfo -q /sys/kernel/security; then
+		if grep -qs securityfs /proc/filesystems; then
+			ebegin "Mounting security filesystem"
+			mount -n -t securityfs -o ${sysfs_opts} \
+				securityfs /sys/kernel/security
+			eend $?
+		fi
+	fi
+
+	# Setup Kernel Support for debugfs
+	if [ -d /sys/kernel/debug ] && ! mountinfo -q /sys/kernel/debug; then
+		if grep -qs debugfs /proc/filesystems; then
+			ebegin "Mounting debug filesystem"
+			mount -n -t debugfs -o ${sysfs_opts} debugfs /sys/kernel/debug
+			eend $?
+		fi
+	fi
+
+	# Setup Kernel Support for configfs
+	if [ -d /sys/kernel/config ] && ! mountinfo -q /sys/kernel/config; then
+		if grep -qs configfs /proc/filesystems; then
+			ebegin "Mounting config filesystem"
+			mount -n -t configfs -o  ${sysfs_opts} configfs /sys/kernel/config
+			eend $?
+		fi
+	fi
+
+	# set up kernel support for fusectl
+	if [ -d /sys/fs/fuse/connections ] \
+		&& ! mountinfo -q /sys/fs/fuse/connections; then
+		if grep -qs fusectl /proc/filesystems; then
+			ebegin "Mounting fuse control filesystem"
+			mount -n -t fusectl -o ${sysfs_opts} \
+				fusectl /sys/fs/fuse/connections
+			eend $?
+		fi
+	fi
+
+	# Setup Kernel Support for SELinux
+	if [ -d /sys/fs/selinux ] && ! mountinfo -q /sys/fs/selinux; then
+		if grep -qs selinuxfs /proc/filesystems; then
+			ebegin "Mounting SELinux filesystem"
+			mount -t selinuxfs selinuxfs /sys/fs/selinux
+			eend $?
+		fi
+	fi
+
+	# Setup Kernel Support for persistent storage
+	if [ -d /sys/fs/pstore ] && ! mountinfo -q /sys/fs/pstore; then
+		if grep -qs 'pstore$' /proc/filesystems; then
+			ebegin "Mounting persistent storage (pstore) filesystem"
+			mount -t pstore pstore -o ${sysfs_opts} /sys/fs/pstore
+			eend $?
+		fi
+	fi
+
+	# set up kernel support for efivarfs
+	if [ -d /sys/firmware/efi/efivars ] &&
+		! mountinfo -q /sys/firmware/efi/efivars; then
+		ebegin "Mounting efivarfs filesystem"
+		mount -n -t efivarfs -o ${sysfs_opts} \
+			efivarfs /sys/firmware/efi/efivars 2> /dev/null
+		eend 0
+	fi
+}
+
+## mount cgroupfs
+mount_cgroups () {
+  local d=/sys/fs/cgroup
+
+  test -d "$d" || return 0
+
+  if mountpoint -q "$d" ; then
+    echo "$d is already a mount point"
+  else
+    echo "Mounting cgroupfs on $d ..."
+  fi
 }
 
 ## mount devtmpfs on /dev
@@ -146,7 +227,7 @@ seed_run () {
 
   mkdir -pm 0755 /run/shm
 
-  for f in /run/utmp ${BOOTLOG:=/run/bootlog}
+  for f in /run/utmp ${BOOTLOG:=/run/boot.log}
   do
     : > "$f"
   done
