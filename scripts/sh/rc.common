@@ -1,5 +1,6 @@
-#!/bin/mksh
-# -*- shell -*-
+##
+## common rc shell functions/subroutines
+##
 
 ## output color definitions
 #NORMAL="\\033[0;39m"         # Standard console grey
@@ -18,20 +19,103 @@ sh=/bin/mksh
 #sh=/bin/dash
 test -f "$sh" -a -x "$sh" && export SHELL=$sh
 
-$bb mkdir -pm 0755 /run/lock /run/sv /run/log /run/Log /run/monit /run/utmps \
-  /run/sv/perp /run/sv/six /run/sv/encore /run/sv/runit \
-  /run/log/perp /run/log/six /run/log/encore /run/log/runit \
-  /var/log/sv/six /var/log/sv/encore /var/log/sv/perp /var/log/sv/perpd
-#$bb cp /etc/monitrc /run/monit
-d=/var/sv
-#test -d "$d" && $bb cp -rL $d/runit $d/perp $d/encore $d/six /run/sv
-test -d "$d" && $bb cp -rL "$d"/???* /run/sv
+prepare () {
+  mkdir -pm 0755 /run/lock /run/sv /run/log /run/Log /run/monit /run/utmps \
+    /run/sv/perp /run/sv/six /run/sv/encore /run/sv/runit \
+    /run/log/perp /run/log/six /run/log/encore /run/log/runit \
+    /var/log/sv/six /var/log/sv/encore /var/log/sv/perp /var/log/sv/perpd
 
-start_scripts () {
-  if test -d /etc/runit/sh ; then
-    for i in /etc/runit/sh/S?* ; do
-      test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
+  #cp /etc/monitrc /run/monit
+  d=/var/sv
+  #test -d "$d" && $bb cp -rL $d/runit $d/perp $d/encore $d/six /run/sv
+  test -d "$d" && cp -rL "$d"/???* /run/sv
+}
+
+## set default host and domain names
+set_host_name () {
+  local name=panda
+  local dom=dark.net
+  local f=/proc/sys/kernel/hostname
+
+  ## directly set the host name without calling "hostname"
+  if test -f "$f" -a -w "$f" ; then
+    echo -e "[$PNAME] Setting host name to $name ...\t\c"
+    echo -n "$name" > "$f" && echo "ok" || echo "ERROR"
+  fi
+
+  ## directly set the domain name with calling "domainname"
+  f=/proc/sys/kernel/domainname
+
+  if test -f "$f" -a -w "$f" ; then
+    echo -e "[$PNAME] Setting domain name to $dom ...\t\c"
+    echo -n "$dom" > "$f" && echo "ok" || echo "ERROR"
+  fi
+}
+
+msg () {
+  ## bold
+  echo -e "\033[1m=> $*\033[m\n"
+}
+
+msg_ok () {
+  ## bold/green
+  echo -e "\033[1m\033[32m OK\033[m\n"
+}
+
+msg_warn () {
+  ## bold/yellow
+  echo -e "\033[1m\033[33mWARNING: $*\033[m"
+}
+
+msg_error () {
+  ## bold/red
+  echo -e "\033[1m\033[31mERROR: $*\033[m\n"
+}
+
+Log () {
+  echo "[$PANME] $*" >> "$BOOTLOG"
+}
+
+Log_ok () {
+  echo "[$PANME] $*" >> "$BOOTLOG"
+}
+
+Log_warn () {
+  echo "[$PANME] $*" >> "$BOOTLOG"
+}
+
+Log_warn () {
+  echo "[$PANME] $*" >> "$BOOTLOG"
+}
+
+start_log () {
+  echo "[$PANME] $*" >> "$BOOTLOG"
+}
+
+## check a given return value
+ev_ret () {
+  local r=${1:-$?}
+
+  if test 0 -eq "$r" ; then
+    echo -e "\tOK"
+  else
+    echo -e "\tFAILED"
+  fi
+
+  return 0
+}
+
+## reverse a given "list"
+## (a string containing a white space separated sequence of substrings)
+rev () {
+  if test 0 -lt "$#" ; then
+    local i r=
+
+    for i in ${1:-} ; do
+      r="$i $r"
     done
+
+    echo $r
   fi
 }
 
@@ -54,43 +138,12 @@ def_env () {
   cd /
 }
 
-## reverse a given "list"
-## (a string containing a white space separated sequence of substrings)
-rev () {
-  if test 0 -lt "$#" ; then
-    local i r=
-
-    for i in ${1:-} ; do
-      r="$i $r"
+source_start_scripts () {
+  if test -d /etc/runit/sh ; then
+    for i in /etc/runit/sh/S?* ; do
+      test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
     done
-
-    echo $r
   fi
-}
-
-## check a given return value
-evret () {
-  local r=${1:-$?}
-
-  if test 0 -eq "$r" ; then
-    echo -e "\tOK"
-  else
-    echo -e "\tFAILED"
-  fi
-
-  return 0
-}
-
-## set default host and domain names
-set_hostname () {
-  local f=/proc/sys/kernel/hostname
-
-  # directly set the host name without calling "hostname"
-  test -f "$f" && echo -n "panda" > "$f"
-
-  # directly set the domain name with calling "domainname"
-  f=/proc/sys/kernel/domainname
-  test -f "$f" && echo -n "dark.net" > "$f"
 }
 
 #start_daemon () {
@@ -237,8 +290,23 @@ seed_dev () {
   mkdir -pm 0755 /dev/shm /dev/mqueue
 }
 
-seed_fs () {
-  : > /var/run/utmp
+## modules-load.d(5) compatible kernel module loader
+modLoad () {
+  ## [-n] [-v]
+  {
+    ## parameters passed as modules-load= or rd.modules-load= in kernel command line
+    sed -nr 's/,/\n/;s/(.* |^)(rd\.)?modules-load=([^ ]*).*/\3/p' /proc/cmdline
+
+    ## find files /{etc,run,usr/lib}/modules-load.d/*.conf in that order
+    find -L /etc/modules-load.d /run/modules-load.d /usr/lib/modules-load.d \
+       	-maxdepth 1 -name '*.conf' -printf '%p %P\n' 2>/dev/null |
+    ## load each basename only once
+	sort -k2 -s | uniq -f1 | cut -d' ' -f1 |
+    ## read the files, output all non-empty, non-comment lines
+	tr '\012' '\0' | xargs -0 -r grep -h -v -e '^[#;]' -e '^$'
+  } |
+  ## Call modprobe on the list of modules
+  tr '\012' '\0' | xargs -0 -r modprobe -ab "$@"
 }
 
 mount_pseudofs () {
@@ -314,8 +382,10 @@ create_files () {
    return 0
 }
 
-mount_virtualfs () {
-        if ! mountpoint /run >/dev/null; then
+mount_virtfs () {
+  local failed=0
+
+        if ! mountpoint /run > /dev/null ; then
                 mount /run || failed=1
         fi
 
@@ -328,18 +398,23 @@ mount_virtualfs () {
                 log_info_msg2 " ${INFO}/proc"
                 mount -o nosuid,noexec,nodev /proc || failed=1
         fi
-        if ! mountpoint /sys >/dev/null; then
+
+        if ! mountpoint /sys > /dev/null ; then
                 log_info_msg2 " ${INFO}/sys"
                 mount -o nosuid,noexec,nodev /sys || failed=1
         fi
-        if ! mountpoint /dev >/dev/null; then
+
+        if ! mountpoint /dev > /dev/null ; then
                 log_info_msg2 " ${INFO}/dev"
                 mount -o mode=0755,nosuid /dev  || failed=1
         fi
 
-        ln -sfn /run/shm /dev/shm
-	(exit ${failed})
-	evaluate_retval
+  ln -sfn /run/shm /dev/shm
+  evret "${failed}"
+}
+
+seed_fs () {
+  : > /var/run/utmp
 }
 
 start_localnet () {
@@ -782,8 +857,13 @@ single () {
   return 0
 }
 
-multi () {
+start_multi_user () {
   echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
+  return 0
+}
+
+stop_multi_user () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Leaving multi user ...  \033[0m\n"
   return 0
 }
 
@@ -799,6 +879,8 @@ start () {
 }
 
 stop () {
+  ## avoid staircase effect
+  stty onlcr
   echo -e "\n\033[1;32;44m  ${PNAME}: Bringing down the system ...  \033[0m\n"
   return 0
 }
