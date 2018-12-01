@@ -1,3 +1,8 @@
+/*
+ * pause(2) until SIG(INT,TERM,USR(1,2)) are received and
+ * don't react to SIGHUP
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
