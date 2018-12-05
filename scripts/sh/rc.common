@@ -37,6 +37,7 @@ set_host_name () {
   local dom="dark.net"
   local f=/proc/sys/kernel/hostname
 
+  #echo "$HOSTNAME" >| /proc/sys/kernel/hostname
   ## directly set the host name without calling "hostname"
   if test -f "$f" -a -w "$f" ; then
     echo -e "[$PNAME] Setting host name to $name ...\t\c"
@@ -748,7 +749,7 @@ run_sysctl () {
 fix_mtab () {
   local f=/proc/self/mounts
 
-  test -f "$f" ; then
+  if test -f "$f" ; then
     echo -e "Fixing mtab file:\tln -sf $f /etc/mtab ...\t\c"
     ln -sf "$f" /etc/mtab
     ev_ret "$?"
