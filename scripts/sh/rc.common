@@ -119,6 +119,17 @@ rev () {
   fi
 }
 
+is_frs () {
+  test 0 -lt "$#" || return 2
+  local i
+
+  for i ; do
+    test -f "$i" -a -s "$i" -a -r "$i" || return 1
+  done
+
+  return 0
+}
+
 ## secure default process environment
 ## (shell settings, default permissions, process limits, signals)
 def_env () {
