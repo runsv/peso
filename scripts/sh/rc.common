@@ -19,6 +19,22 @@ sh=/bin/mksh
 #sh=/bin/dash
 test -f "$sh" -a -x "$sh" && export SHELL=$sh
 
+lvm_start () {
+  dmsetup mknodes
+  vgscan --ignorelockingfailure
+  vgchange -ay --ignorelockingfailure
+}
+
+deactivate_vgs () {
+  _group=${1:-All}
+  vgs=$( vgs | wc -l )
+
+  if test "$vgs" -gt 0 ; then
+    msg "Deactivating $_group LVM Volume Groups ... "
+    vgchange -an
+  fi
+}
+
 prepare () {
   mkdir -pm 0755 /run/lock /run/sv /run/log /run/Log /run/monit /run/utmps \
     /run/sv/perp /run/sv/six /run/sv/encore /run/sv/runit \
