@@ -162,11 +162,11 @@ source_start_scripts () {
 #  pgrep "$1" || $@
 #}
 
-loopback_up () {
+loop_back_up () {
   :
 }
 
-loopback_down () {
+loop_back_down () {
   :
 }
 
@@ -307,9 +307,9 @@ mount_dev () {
 }
 
 seed_run () {
-  local f=
+  local f
 
-  mkdir -pm 0755 /run/shm
+  mkdir -p -m 0755 /run/shm
 
   for f in /run/utmp ${BOOTLOG:=/run/boot.log}
   do
@@ -410,38 +410,39 @@ create_files () {
 
    ## close file descriptor 9 (end redirection)
    exec 0>&9 9>&-
+
    return 0
 }
 
 mount_virtfs () {
-  local failed=0
+  local r=0
 
-        if ! mountpoint /run > /dev/null ; then
-                mount /run || failed=1
-        fi
+  if ! mountpoint -q /run ; then
+    mount /run || r=1
+  fi
 
-        mkdir -p /run/lock /run/shm
-        chmod 1777 /run/shm
+  mkdir -p -m 0755 /run/lock /run/shm
+  chmod 1777 /run/shm
 
-        log_info_msg "Mounting virtual file systems: ${INFO}/run"
+  log_info_msg "Mounting virtual file systems: ${INFO}/run "
 
-        if ! mountpoint /proc > /dev/null ; then
-                log_info_msg2 " ${INFO}/proc"
-                mount -o nosuid,noexec,nodev /proc || failed=1
-        fi
+  if ! mountpoint -q /proc ; then
+    log_info_msg2 " ${INFO}/proc"
+    mount -o "nosuid,noexec,nodev" /proc || r=1
+  fi
 
-        if ! mountpoint /sys > /dev/null ; then
-                log_info_msg2 " ${INFO}/sys"
-                mount -o nosuid,noexec,nodev /sys || failed=1
-        fi
+  if ! mountpoint -q /sys ; then
+    log_info_msg2 " ${INFO}/sys"
+    mount -o "nosuid,noexec,nodev" /sys || r=1
+  fi
 
-        if ! mountpoint /dev > /dev/null ; then
-                log_info_msg2 " ${INFO}/dev"
-                mount -o mode=0755,nosuid /dev  || failed=1
-        fi
+  if ! mountpoint -q /dev ; then
+    log_info_msg2 " ${INFO}/dev"
+    mount -o "mode=0755,nosuid" /dev || r=1
+  fi
 
   ln -sfn /run/shm /dev/shm
-  evret "${failed}"
+  ev_ret "$r"
 }
 
 seed_fs () {
@@ -451,43 +452,42 @@ seed_fs () {
 start_localnet () {
   test -f /etc/sysconfig/network && . /etc/sysconfig/network
   test -f /etc/hostname && HOSTNAME=`cat /etc/hostname`
-  log_info_msg "Bringing up the loopback interface..."
+
+  log_info_msg "Bringing up the loopback interface ... "
   ip addr add 127.0.0.1/8 label lo dev lo
   ip link set lo up
-  evret "$?"
+  ev_ret "$?"
 
   log_info_msg "Setting hostname to ${HOSTNAME} ..."
-  hostname ${HOSTNAME}
-  evret "$?"
+  hostname "${HOSTNAME:-darkstar}"
+  ev_ret "$?"
 }
 
 stop_localnet () {
-  log_info_msg "Bringing down the loopback interface ..."
+  log_info_msg "Bringing down the loopback interface ... "
   ip link set lo down
-  evret "$?"
+  ev_ret "$?"
 }
 
 load_modules () {
   ## assure that the kernel has module support
   test -f /proc/modules || return 0
+  local FILE
 
   for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*.conf
   do
-    test \! -f $FILE && continue
     ## continue with next if there's no modules file or there are no
     ## valid entries
-    test -r $FILE || continue
+    test -f "$FILE" -a -s "$FILE" -a -r "$FILE" || continue
     egrep -qv '^($|#)' $FILE || continue
-    log_info_msg "Loading modules:"
+    log_info_msg "Loading modules: "
     break
   done
 
-  for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*.conf
+  for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*?.conf
   do
-     test -f "$FILE" || continue
-     [ -r "$FILE" ] || continue
-     egrep -qv '^($|#)' "$FILE" || continue
-
+    test -f "$FILE" -a -s "$FILE" -a -r "$FILE" || continue
+    egrep -qv '^($|#)' "$FILE" || continue
 
     while read module args
     do
@@ -508,15 +508,305 @@ load_modules () {
      done < "$FILE"
   done
 
-  ## Print a message about successfully loaded modules on the correct line.
+  ## print a message about successfully loaded modules on the correct line.
   log_success_msg2
-  ## Print a failure message with a list of any modules that
+  ## print a failure message with a list of any modules that
   ## may have failed to load.
   if test -n "${failedmod}" ; then
      log_failure_msg "Failed to load modules:${failedmod}"
   fi
 
   return 0
+}
+
+restore_clock () {
+  ## read the clock config from first arg or try to use default config file
+  local f=${1:-/etc/sysconfig/clock}
+  test -f "$f" -a -s "$f" -a -r "$f" && . "$f"
+
+  case "${UTC:-}" in
+    yes | true | 1 )
+      CLOCKMODE=utc
+      CLOCKPARAMS="${CLOCKPARAMS} --utc"
+      ;;
+    no | false | 0 )
+      CLOCKMODE=localtime
+      CLOCKPARAMS="${CLOCKPARAMS} --localtime"
+      ;;
+  esac
+
+  hwclock --hctosys ${CLOCKPARAMS} > /dev/null
+  log_info_msg "Setting hardware clock to ${CLOCKMODE} ... "
+  ev_ret "$?"
+}
+
+save_clock () {
+  log_info_msg "Setting hardware clock ... "
+  hwclock --systohc ${CLOCKPARAMS} > /dev/null
+  ev_ret "$?"
+}
+
+check_fs () {
+  local m
+
+  if test -f /fastboot ; then
+     m="/fastboot found, will omit "
+     m="${msg} file system checks as requested.\n"
+     log_info_msg "$m"
+     return 0
+  fi
+
+  log_info_msg "Mounting root file system in read-only mode ... "
+  mount -n -o remount,ro / > /dev/null
+
+  if test "${?}" -eq 0 ; then
+     log_success_msg2
+  else
+     log_failure_msg2
+     msg="\n\nCannot check root "
+     msg="${msg}filesystem because it could not be mounted "
+     msg="${msg}in read-only mode.\n\n"
+     msg="${msg}After you press Enter, this system will be "
+     msg="${msg}halted and powered off.\n\n"
+     log_failure_msg "${msg}"
+
+     log_info_msg "Press Enter to continue ... "
+     wait_for_user
+     #/etc/rc.d/init.d/halt stop
+  fi
+
+  if [ -f /forcefsck ]; then
+     msg="\n/forcefsck found, forcing file"
+     msg="${msg} system checks as requested."
+     log_success_msg "$msg"
+     options="-f"
+  else
+     options=
+  fi
+
+  log_info_msg "Checking file systems ... "
+
+  ## note: -a option used to be -p; but this fails e.g. on fsck.minix
+  if is_true "$VERBOSE_FSCK" ; then
+     fsck ${options} -a -A -C -T
+  else
+     fsck ${options} -a -A -C -T > /dev/null
+  fi
+
+  error_value="$?"
+
+  if test "${error_value}" -eq 0 ; then
+     log_success_msg2
+  fi
+
+  if test "${error_value}" -eq 1 ; then
+     msg="\nWARNING:\n\nFile system errors "
+     msg="${msg}were found and have been corrected.\n"
+     msg="${msg}You may want to double-check that "
+     msg="${msg}everything was fixed properly."
+     log_warning_msg "$msg"
+  fi
+
+  if test "${error_value}" -eq 2 -o "${error_value}" -eq 3 ; then
+     msg="\nWARNING:\n\nFile system errors "
+     msg="${msg}were found and have been been "
+     msg="${msg}corrected, but the nature of the "
+     msg="${msg}errors require this system to be rebooted.\n\n"
+     msg="${msg}After you press enter, "
+     msg="${msg}this system will be rebooted\n\n"
+     log_failure_msg "$msg"
+
+     log_info_msg "Press Enter to continue ... "
+     wait_for_user
+     reboot -f
+  fi
+
+  if test "${error_value}" -gt 3 -a "${error_value}" -lt 16 ; then
+     msg="\nFAILURE:\n\nFile system errors "
+     msg="${msg}were encountered that could not be "
+     msg="${msg}fixed automatically.  This system "
+     msg="${msg}cannot continue to boot and will "
+     msg="${msg}therefore be halted until those "
+     msg="${msg}errors are fixed manually by a "
+     msg="${msg}System Administrator.\n\n"
+     msg="${msg}After you press Enter, this system will be "
+     msg="${msg}halted and powered off.\n\n"
+     log_failure_msg "$msg"
+
+     log_info_msg "Press Enter to continue ... "
+     wait_for_user
+     #/etc/rc.d/init.d/halt stop
+  fi
+
+  if test "${error_value}" -ge 16 ; then
+     msg="\nFAILURE:\n\nUnexpected Failure "
+     msg="${msg}running fsck.  Exited with error "
+     msg="${msg} code: ${error_value}."
+     log_failure_msg "$msg"
+     return ${error_value}
+  fi
+
+  return 0
+}
+
+mount_fs () {
+  log_info_msg "Remounting root file system in read-write mode ... "
+  mount -o remount,rw / > /dev/null
+  ev_ret "$?"
+  ## remove fsck-related file system watermarks.
+  rm -f /fastboot /forcefsck
+  ## make sure /dev/pts exists
+  mkdir -p -m 755 /dev/pts
+  ## this will mount all filesystems that do not have _netdev in
+  ## their option list.  _netdev denotes a network filesystem.
+  log_info_msg "Mounting remaining file systems ... "
+  mount -a -O no_netdev > /dev/null
+  evaluate_retval
+  return $failed
+}
+
+unmount_fs () {
+  local KILLDELAY=0
+
+  ## don't unmount virtual file systems like /run
+  log_info_msg "Unmounting all other currently mounted file systems ... "
+  while test "$KILLDELAY" -lt 3 && \
+   ! umount -a -d -r -t notmpfs,nosysfs,nodevtmpfs,noproc,nodevpts > /dev/null
+  do
+    ev_ret "$?"
+    KILLDELAY=$(( KILLDELAY + 1 ))
+    do_stop_sendsignals
+  done
+
+  ev_ret "$?"
+  sync
+  KILLDELAY=0
+  ## make sure / is mounted read only (umount bug)
+  log_info_msg "Remonting root file system in read-only mode..."
+
+  while test "$KILLDELAY" -lt 3 && ! mount -o remount,ro /
+  do
+    ev_ret "$?"
+    KILLDELAY=$((KILLDELAY+1))
+    do_stop_sendsignals
+  done
+
+  ev_ret "$?"
+
+  ## make all LVM volume groups unavailable, if appropriate
+  ## this fails if swap or / are on an LVM partition
+  #if [ -x /sbin/vgchange ]; then /sbin/vgchange -an > /dev/null; fi
+}
+
+clean_fs () {
+  log_info_msg "Cleaning file systems: "
+
+  if test "${SKIPTMPCLEAN:-}" = "" ; then
+    log_info_msg2 " /tmp"
+    chmod 1777 /tmp
+    cd /tmp &&
+    find . -xdev -mindepth 1 ! -name lost+found -delete || failed=1
+  fi
+
+  : > /var/run/utmp
+
+  if grep -q '^utmp:' /etc/group ; then
+    chmod 664 /var/run/utmp
+    chgrp utmp /var/run/utmp
+  fi
+
+  ev_ret "$failed"
+
+  if egrep -qv '^(#|$)' /etc/sysconfig/createfiles 2>/dev/null; then
+    log_info_msg "Creating files and directories... "
+    create_files      # Always returns 0
+    ev_ret "$?"
+  fi
+
+  return $failed
+}
+
+swap_on () {
+  log_info_msg "Activating all swap files/partitions..."
+  swapon -a
+  ev_ret "$?"
+}
+
+swap_off () {
+  log_info_msg "Deactivating all swap files/partitions..."
+  swapoff -a
+  ev_ret "$?"
+}
+
+run_sysctl () {
+  if test -f /etc/sysctl.conf ; then
+    log_info_msg "Setting kernel runtime parameters ..."
+    sysctl -q -p
+    ev_ret "$?"
+  fi
+}
+
+## set up the console vts
+setup_console () {
+  local r=0
+
+  test -f /etc/sysconfig/console && . /etc/sysconfig/console
+
+  ## see if we need to do anything
+  if test -z "${KEYMAP:-}" -a -z "${KEYMAP_CORRECTIONS:-}" -a \
+    -z "${FONT:-}" -a -z "${LEGACY_CHARSET:-}" && ! is_true "${UNICODE:-}"
+  then
+    return 0
+  fi
+
+  ## there should be no bogus failures below this line!
+  log_info_msg "Setting up Linux console ..."
+
+  ## figure out if a framebuffer console is used
+  test -d /sys/class/graphics/fb0 && use_fb=1 || use_fb=0
+
+  ## figure out the command to set the console into the desired mode
+  is_true "${UNICODE:-}" &&
+  MODE_COMMAND="echo -en '\033%G' && kbd_mode -u" ||
+  MODE_COMMAND="echo -en '\033%@\033(K' && kbd_mode -a"
+
+  ## on framebuffer consoles, font has to be set for each vt in
+  ## UTF-8 mode. This doesn't hurt in non-UTF-8 mode also.
+  ! is_true "${use_fb}" || test -z "${FONT:-}" ||
+    MODE_COMMAND="${MODE_COMMAND} && setfont ${FONT}"
+
+  ## apply that command to all consoles mentioned in
+  ## /etc/inittab. Important: in the UTF-8 mode this should
+  ## happen before setfont, otherwise a kernel bug will
+  ## show up and the unicode map of the font will not be used.
+  for TTY in `grep '^[^#].*respawn:/sbin/agetty' /etc/inittab |
+    grep -o '\btty[[:digit:]]*\b'`
+  do
+    openvt -f -w -c ${TTY#tty} -- sh -c "${MODE_COMMAND}" || r=1
+  done
+
+  ## set the font (if not already set above) and the keymap
+  if test 1 -eq "${use_fb:-}" -a -n "${FONT:-}" ; then
+    setfont "$FONT" || r=1
+  fi
+
+  if test -n "${KEYMAP:-}" ; then
+    loadkeys "${KEYMAP}" > /dev/null 2>&1 || r=1
+  fi
+
+  if test -n "${KEYMAP_CORRECTIONS:-}" ; then
+    loadkeys ${KEYMAP_CORRECTIONS} > /dev/null 2>&1 || r=1
+  fi
+
+  ## convert the keymap from $LEGACY_CHARSET to UTF-8
+  if test -n "${LEGACY_CHARSET:-}" ; then
+    dumpkeys -c "$LEGACY_CHARSET" | loadkeys -u > /dev/null 2>&1 || r=1
+  fi
+
+  ## if any of the commands above failed, the trap at the
+  ## top would set $r to 1 (non zero)
+  ev_ret "$r"
+  return "$r"
 }
 
 bootlogd_start () {
@@ -535,7 +825,8 @@ bootlogd_stop () {
 udev_start () {
   log_info_msg "Populating /dev with device nodes... "
 
-  if ! grep -q '[[:space:]]sysfs' /proc/mounts; then
+  if ! grep -q '[[:space:]]sysfs' /proc/mounts
+  then
      log_failure_msg2
      msg="FAILURE:\n\nUnable to create "
      msg="${msg}devices without a SysFS filesystem\n\n"
@@ -547,24 +838,24 @@ udev_start () {
      /etc/rc.d/init.d/halt stop
   fi
 
-  # Udev handles uevents itself, so we don't need to have
-  # the kernel call out to any binary in response to them
+  ## udev handles uevents itself, so we don't need to have
+  ## the kernel call out to any binary in response to them
   test -f /proc/sys/kernel/hotplug && echo > /proc/sys/kernel/hotplug
-  # Start the udev daemon to continually watch for, and act on, uevents
-  /sbin/udevd --daemon --resolve-names=never
-  # Now traverse /sys in order to "coldplug" devices that have
-  # already been discovered
-  /sbin/udevadm trigger --action=add    --type=subsystems
-  /sbin/udevadm trigger --action=add    --type=devices
-  /sbin/udevadm trigger --action=change --type=devices
+  ## Start the udev daemon to continually watch for, and act on, uevents
+  udevd --daemon --resolve-names=never
+  ## now traverse /sys in order to "coldplug" devices that have
+  ## already been discovered
+  udevadm trigger --action=add    --type=subsystems
+  udevadm trigger --action=add    --type=devices
+  udevadm trigger --action=change --type=devices
 
-  # Now wait for udevd to process the uevents we triggered
+  ## now wait for udevd to process the uevents we triggered
   if ! is_true "$OMIT_UDEV_SETTLE" ; then
-     /sbin/udevadm settle
+     udevadm settle
   fi
 
-  # If any LVM based partitions are on the system, ensure they
-  # are activated so they can be used.
+  ## if any LVM based partitions are on the system, ensure they
+  ## are activated so they can be used.
   test -x /sbin/vgchange && /sbin/vgchange -a y > /dev/null
   log_success_msg2
 }
@@ -574,323 +865,35 @@ udev_stop () {
   udevadm info --cleanup-db
 }
 
-set_clock () {
-   test -r /etc/sysconfig/clock && . /etc/sysconfig/clock
-
-   case "${UTC:-}" in
-    yes | true | 1 )
-      CLOCKPARAMS="${CLOCKPARAMS} --utc"
-      CLOCKMODE=utc
-      ;;
-    no | false | 0 )
-      CLOCKPARAMS="${CLOCKPARAMS} --localtime"
-      CLOCKMODE=localtime
-      ;;
-   esac
-
-   hwclock --hctosys ${CLOCKPARAMS} >/dev/null
-   log_info_msg "Setting hardware clock to ${CLOCKMODE}..."
-   evaluate_retval
-}
-
-save_clock () {
-   log_info_msg "Setting hardware clock..."
-   hwclock --systohc ${CLOCKPARAMS} >/dev/null
-   evaluate_retval
-}
-
-check_fs () {
-   if test -f /fastboot ; then
-     msg="/fastboot found, will omit "
-     msg="${msg} file system checks as requested.\n"
-     log_info_msg "${msg}"
-     return 0
-   fi
-
-   log_info_msg "Mounting root file system in read-only mode... "
-   mount -n -o remount,ro / >/dev/null
-
-   if [ ${?} != 0 ]; then
-     log_failure_msg2
-     msg="\n\nCannot check root "
-     msg="${msg}filesystem because it could not be mounted "
-     msg="${msg}in read-only mode.\n\n"
-     msg="${msg}After you press Enter, this system will be "
-     msg="${msg}halted and powered off.\n\n"
-     log_failure_msg "${msg}"
-
-     log_info_msg "Press Enter to continue..."
-     wait_for_user
-     /etc/rc.d/init.d/halt stop
-   else
-     log_success_msg2
-   fi
-
-   if [ -f /forcefsck ]; then
-     msg="\n/forcefsck found, forcing file"
-     msg="${msg} system checks as requested."
-     log_success_msg "$msg"
-     options="-f"
-   else
-     options=""
-   fi
-
-   log_info_msg "Checking file systems..."
-   # Note: -a option used to be -p; but this fails e.g. on fsck.minix
-   if is_true "$VERBOSE_FSCK"; then
-     fsck ${options} -a -A -C -T
-   else
-     fsck ${options} -a -A -C -T >/dev/null
-   fi
-
-   error_value=${?}
-
-   if [ "${error_value}" = 0 ]; then
-     log_success_msg2
-   fi
-
-   if [ "${error_value}" = 1 ]; then
-     msg="\nWARNING:\n\nFile system errors "
-     msg="${msg}were found and have been corrected.\n"
-     msg="${msg}You may want to double-check that "
-     msg="${msg}everything was fixed properly."
-     log_warning_msg "$msg"
-   fi
-
-   if [ "${error_value}" = 2 -o "${error_value}" = 3 ]; then
-     msg="\nWARNING:\n\nFile system errors "
-     msg="${msg}were found and have been been "
-     msg="${msg}corrected, but the nature of the "
-     msg="${msg}errors require this system to be rebooted.\n\n"
-     msg="${msg}After you press enter, "
-     msg="${msg}this system will be rebooted\n\n"
-     log_failure_msg "$msg"
-
-     log_info_msg "Press Enter to continue..."
-     wait_for_user
-     reboot -f
-   fi
-   if [ "${error_value}" -gt 3 -a "${error_value}" -lt 16 ]; then
-     msg="\nFAILURE:\n\nFile system errors "
-     msg="${msg}were encountered that could not be "
-     msg="${msg}fixed automatically.  This system "
-     msg="${msg}cannot continue to boot and will "
-     msg="${msg}therefore be halted until those "
-     msg="${msg}errors are fixed manually by a "
-     msg="${msg}System Administrator.\n\n"
-     msg="${msg}After you press Enter, this system will be "
-     msg="${msg}halted and powered off.\n\n"
-     log_failure_msg "$msg"
-
-     log_info_msg "Press Enter to continue..."
-     wait_for_user
-     /etc/rc.d/init.d/halt stop
-   fi
-
-   if [ "${error_value}" -ge 16 ]; then
-     msg="\nFAILURE:\n\nUnexpected Failure "
-     msg="${msg}running fsck.  Exited with error "
-     msg="${msg} code: ${error_value}."
-     log_failure_msg $msg
-     return ${error_value}
-   fi
-
-   return 0
-}
-
-mount_fs () {
-  log_info_msg "Remounting root file system in read-write mode..."
-  mount -o remount,rw / >/dev/null
-  evaluate_retval
-  # Remove fsck-related file system watermarks.
-  rm -f /fastboot /forcefsck
-  # Make sure /dev/pts exists
-  mkdir -p /dev/pts
-  # This will mount all filesystems that do not have _netdev in
-  # their option list.  _netdev denotes a network filesystem.
-  log_info_msg "Mounting remaining file systems..."
-  mount -a -O no_netdev >/dev/null
-  evaluate_retval
-  return $failed
-}
-
-unmount_fs () {
-  local KILLDELAY=0
-
-  # Don't unmount virtual file systems like /run
-  log_info_msg "Unmounting all other currently mounted file systems..."
-  while \
-   [ $KILLDELAY -lt 3 ] && \
-   ! umount -a -d -r -t notmpfs,nosysfs,nodevtmpfs,noproc,nodevpts >/dev/null
-  do
-    evaluate_retval
-	KILLDELAY=$((KILLDELAY+1))
-	do_stop_sendsignals
-  done
-  evaluate_retval
-  sync
-  KILLDELAY=0
-  # Make sure / is mounted read only (umount bug)
-  log_info_msg "Remonting root file system in read-only mode..."
-  while \
-   [ $KILLDELAY -lt 3 ] && \
-   ! mount -o remount,ro /
-  do
-     evaluate_retval
-     KILLDELAY=$((KILLDELAY+1))
-     do_stop_sendsignals
-  done
-  evaluate_retval
-
-  # Make all LVM volume groups unavailable, if appropriate
-  # This fails if swap or / are on an LVM partition
-  #if [ -x /sbin/vgchange ]; then /sbin/vgchange -an > /dev/null; fi
-}
-
-clean_fs () {
-  log_info_msg "Cleaning file systems:"
-
-  if [ "${SKIPTMPCLEAN}" = "" ]; then
-    log_info_msg2 " /tmp"
-    chmod 1777 /tmp
-    cd /tmp &&
-    find . -xdev -mindepth 1 ! -name lost+found -delete || failed=1
-  fi
-
-  : > /var/run/utmp
-
-  if grep -q '^utmp:' /etc/group ; then
-    chmod 664 /var/run/utmp
-    chgrp utmp /var/run/utmp
-  fi
-
-  (return ${failed})
-  evaluate_retval
-
-  if egrep -qv '^(#|$)' /etc/sysconfig/createfiles 2>/dev/null; then
-    log_info_msg "Creating files and directories... "
-    create_files      # Always returns 0
-    evaluate_retval
-  fi
-
-  return $failed
-}
-
 udev_retry () {
-  log_info_msg "Retrying failed uevents, if any..."
+  log_info_msg "Retrying failed uevents, if any ... "
 
-  # As of udev-186, the --run option is no longer valid
+  ## As of udev-186, the --run option is no longer valid
   #rundir=$(/sbin/udevadm info --run)
   rundir=/run/udev
-  # From Debian: "copy the rules generated before / was mounted
-  # read-write":
-
+  ## from Debian: "copy the rules generated before / was mounted read-write":
   for file in ${rundir}/tmp-rules--*; do
     dest=${file##*tmp-rules--}
-    [ "$dest" = '*' ] && break
-    cat $file >> /etc/udev/rules.d/$dest
-    rm -f $file
+    test "$dest" = '*' && break
+    cat "$file" >> /etc/udev/rules.d/$dest
+    rm -f "$file"
   done
 
-  # Re-trigger the uevents that may have failed,
-  # in hope they will succeed now
-  /bin/sed -e 's/#.*$//' /etc/sysconfig/udev_retry | /bin/grep -v '^$' | \
+  ## re-trigger the uevents that may have failed,
+  ## in hope they will succeed now
+  sed -e 's/#.*$//' /etc/sysconfig/udev_retry | /bin/grep -v '^$' | \
   while read line ; do
     for subsystem in $line ; do
-      /sbin/udevadm trigger --subsystem-match=$subsystem --action=add
+      udevadm trigger --subsystem-match=$subsystem --action=add
     done
   done
 
-  # Now wait for udevd to process the uevents we triggered
-  if ! is_true "$OMIT_UDEV_RETRY_SETTLE"; then
-    /sbin/udevadm settle
+  ## now wait for udevd to process the uevents we triggered
+  if ! is_true "$OMIT_UDEV_RETRY_SETTLE" ; then
+    udevadm settle
   fi
 
-  evret "$?"
-}
-
-swap_on () {
-  log_info_msg "Activating all swap files/partitions..."
-  swapon -a
-  evret "$?"
-}
-
-swap_off () {
-  log_info_msg "Deactivating all swap files/partitions..."
-  swapoff -a
-  evret "$?"
-}
-
-run_sysctl () {
-  if test -f /etc/sysctl.conf ; then
-    log_info_msg "Setting kernel runtime parameters ..."
-    sysctl -q -p
-    evret "$?"
-  fi
-}
-
-## set up the console vts
-setup_console () {
-  local r=0
-
-  test -f /etc/sysconfig/console && . /etc/sysconfig/console
-
-  ## See if we need to do anything
-  if test -z "${KEYMAP:-}" -a -z "${KEYMAP_CORRECTIONS:-}" -a \
-    -z "${FONT:-}" -a -z "${LEGACY_CHARSET:-}" && ! is_true "${UNICODE:-}"
-  then
-    return 0
-  fi
-
-  ## There should be no bogus failures below this line!
-  log_info_msg "Setting up Linux console ..."
-
-  ## Figure out if a framebuffer console is used
-  test -d /sys/class/graphics/fb0 && use_fb=1 || use_fb=0
-
-  ## Figure out the command to set the console into the
-  ## desired mode
-  is_true "${UNICODE:-}" &&
-  MODE_COMMAND="echo -en '\033%G' && kbd_mode -u" ||
-  MODE_COMMAND="echo -en '\033%@\033(K' && kbd_mode -a"
-
-  ## On framebuffer consoles, font has to be set for each vt in
-  ## UTF-8 mode. This doesn't hurt in non-UTF-8 mode also.
-  ! is_true "${use_fb}" || test -z "${FONT:-}" ||
-    MODE_COMMAND="${MODE_COMMAND} && setfont ${FONT}"
-
-  ## Apply that command to all consoles mentioned in
-  ## /etc/inittab. Important: in the UTF-8 mode this should
-  ## happen before setfont, otherwise a kernel bug will
-  ## show up and the unicode map of the font will not be used.
-  for TTY in `grep '^[^#].*respawn:/sbin/agetty' /etc/inittab |
-    grep -o '\btty[[:digit:]]*\b'`
-  do
-    openvt -f -w -c ${TTY#tty} -- sh -c "${MODE_COMMAND}" || r=1
-  done
-
-  ## Set the font (if not already set above) and the keymap
-  if test 1 -eq "${use_fb:-}" -a -n "${FONT:-}" ; then
-    setfont "$FONT" || r=1
-  fi
-
-  if test -n "${KEYMAP:-}" ; then
-    loadkeys "${KEYMAP}" > /dev/null 2>&1 || r=1
-  fi
-
-  if test -n "${KEYMAP_CORRECTIONS:-}" ; then
-    loadkeys ${KEYMAP_CORRECTIONS} > /dev/null 2>&1 || r=1
-  fi
-
-  ## Convert the keymap from $LEGACY_CHARSET to UTF-8
-  if test -n "${LEGACY_CHARSET:-}" ; then
-    dumpkeys -c "$LEGACY_CHARSET" | loadkeys -u > /dev/null 2>&1 || r=1
-  fi
-
-  ## If any of the commands above failed, the trap at the
-  ## top would set $r to 1 (non zero)
-  evret "$r"
-  return "$r"
+  ev_ret "$?"
 }
 
 ## load additional service function/subroutine definitions
