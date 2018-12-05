@@ -2,6 +2,7 @@
 ## common rc shell functions/subroutines
 ##
 
+# TODO: ln -s /proc/self/mounts /etc/mtab
 ## output color definitions
 #NORMAL="\\033[0;39m"         # Standard console grey
 #SUCCESS="\\033[1;32m"        # Success is green
@@ -268,6 +269,25 @@ mount_sys_misc () {
 	fi
 }
 
+mount_binfmt () {
+  local p
+  echo "Mounting binfmt fs ..."
+  mountpoint -q /proc/sys/fs/binfmt_misc ||
+    mount -t binfmt_misc binfmt /proc/sys/fs/binfmt_misc || return 1
+
+  for path in /usr/lib/binfmt.d /etc/binfmt.d /run/binfmt.d
+  do
+        test -d "$path" || continue
+        [[ -z "$(ls $path)" ]] && continue
+        grep "^:" $path/* | \
+            while read -r line; do
+                printf "%s" "$line" > /proc/sys/fs/binfmt_misc/register || return 1
+            done
+  done
+
+  return 0
+}
+
 ## mount cgroupfs
 mount_cgroups () {
   local d=/sys/fs/cgroup
@@ -464,9 +484,9 @@ load_modules () {
 
   for FILE in /etc/sysconfig/modules /etc/sysconfig/modules.d/*.conf
   do
-     [ ! -f $FILE ] && continue
-     [ -r $FILE ] || continue
-     egrep -qv '^($|#)' $FILE || continue
+     test -f "$FILE" || continue
+     [ -r "$FILE" ] || continue
+     egrep -qv '^($|#)' "$FILE" || continue
 
 
     while read module args
@@ -477,7 +497,7 @@ load_modules () {
          esac
 
          ## attempt to load the module, passing any arguments provided
-         modprobe ${module} ${args} >/dev/null
+         modprobe ${module} ${args} > /dev/null
 
          # Print the module name if successful, otherwise take note.
          if test 0 -eq "$?" ; then
@@ -485,18 +505,31 @@ load_modules () {
          else
           failedmod="${failedmod} ${module}"
          fi
-     done < $FILE
+     done < "$FILE"
   done
- # fi
-  # Print a message about successfully loaded modules on the correct line.
+
+  ## Print a message about successfully loaded modules on the correct line.
   log_success_msg2
-  # Print a failure message with a list of any modules that
-  # may have failed to load.
+  ## Print a failure message with a list of any modules that
+  ## may have failed to load.
   if test -n "${failedmod}" ; then
      log_failure_msg "Failed to load modules:${failedmod}"
   fi
 
   return 0
+}
+
+bootlogd_start () {
+  echo "Starting bootlogd ..."
+  bootlogd -p /run/bootlogd.pid -l /var/log/boot.log || return 1
+}
+
+bootlogd_stop () {
+  test -f /run/bootlogd.pid || return 0
+  echo "Stopping bootlogd ..."
+  touch /var/log/boot.log
+  kill $(< /run/bootlogd.pid)
+  rm -f /run/bootlogd.pid
 }
 
 udev_start () {
