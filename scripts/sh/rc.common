@@ -178,11 +178,12 @@ source_start_scripts () {
 #  pgrep "$1" || $@
 #}
 
-loop_back_up () {
+## bring up the loopback interface
+lo_up () {
   :
 }
 
-loop_back_down () {
+lo_down () {
   :
 }
 
@@ -215,39 +216,58 @@ mount_run () {
   fi
 }
 
+## setup kernel support for securityfs
+mount_secfs () {
+  local d=/sys/kernel/security
+
+  test -d "$d" || return 0
+  grep -qs securityfs /proc/filesystems || return 0
+
+  if mountpoint -q "$d" ; then
+    echo "$d is already a mount point"
+  else
+	ebegin "Mounting security filesystem on $d ... "
+	mount -n -t securityfs -o ${sysfs_opts} \
+		securityfs /sys/kernel/security
+	eend $?
+  fi
+}
+
+## set up kernel support for debugfs
+mount_debugfs () {
+  local d=/sys/kernel/debug
+
+  test -d "$d" || return 0
+  grep -qs securityfs /proc/filesystems || return 0
+
+  if mountpoint -q "$d" ; then
+    echo "$d is already a mount point"
+  else
+    echo "Mounting $d"
+  fi
+}
+
 ## mount misc aux fs under /sys
 mount_sys_misc () {
-	## Setup Kernel Support for securityfs
-	if [ -d /sys/kernel/security ] && \
-		! mountinfo -q /sys/kernel/security; then
-		if grep -qs securityfs /proc/filesystems; then
-			ebegin "Mounting security filesystem"
-			mount -n -t securityfs -o ${sysfs_opts} \
-				securityfs /sys/kernel/security
-			eend $?
-		fi
-	fi
-
-	# Setup Kernel Support for debugfs
-	if [ -d /sys/kernel/debug ] && ! mountinfo -q /sys/kernel/debug; then
-		if grep -qs debugfs /proc/filesystems; then
+  if [ -d /sys/kernel/debug ] && ! mountinfo -q /sys/kernel/debug ; then
+	if grep -qs debugfs /proc/filesystems ; then
 			ebegin "Mounting debug filesystem"
 			mount -n -t debugfs -o ${sysfs_opts} debugfs /sys/kernel/debug
 			eend $?
 		fi
-	fi
+  fi
 
-	# Setup Kernel Support for configfs
-	if [ -d /sys/kernel/config ] && ! mountinfo -q /sys/kernel/config; then
+  ## set up kernel support for configfs
+  if [ -d /sys/kernel/config ] && ! mountinfo -q /sys/kernel/config; then
 		if grep -qs configfs /proc/filesystems; then
 			ebegin "Mounting config filesystem"
 			mount -n -t configfs -o  ${sysfs_opts} configfs /sys/kernel/config
 			eend $?
 		fi
-	fi
+  fi
 
-	# set up kernel support for fusectl
-	if [ -d /sys/fs/fuse/connections ] \
+  ## set up kernel support for fusectl
+  if [ -d /sys/fs/fuse/connections ] \
 		&& ! mountinfo -q /sys/fs/fuse/connections; then
 		if grep -qs fusectl /proc/filesystems; then
 			ebegin "Mounting fuse control filesystem"
@@ -255,34 +275,34 @@ mount_sys_misc () {
 				fusectl /sys/fs/fuse/connections
 			eend $?
 		fi
-	fi
+  fi
 
-	# Setup Kernel Support for SELinux
-	if [ -d /sys/fs/selinux ] && ! mountinfo -q /sys/fs/selinux; then
+  ## set up Kernel Support for SELinux
+  if [ -d /sys/fs/selinux ] && ! mountinfo -q /sys/fs/selinux; then
 		if grep -qs selinuxfs /proc/filesystems; then
 			ebegin "Mounting SELinux filesystem"
 			mount -t selinuxfs selinuxfs /sys/fs/selinux
 			eend $?
 		fi
-	fi
+  fi
 
-	# Setup Kernel Support for persistent storage
-	if [ -d /sys/fs/pstore ] && ! mountinfo -q /sys/fs/pstore; then
+  ## set up Kernel Support for persistent storage
+  if [ -d /sys/fs/pstore ] && ! mountinfo -q /sys/fs/pstore; then
 		if grep -qs 'pstore$' /proc/filesystems; then
 			ebegin "Mounting persistent storage (pstore) filesystem"
 			mount -t pstore pstore -o ${sysfs_opts} /sys/fs/pstore
 			eend $?
 		fi
-	fi
+  fi
 
-	# set up kernel support for efivarfs
-	if [ -d /sys/firmware/efi/efivars ] &&
+  ## set up kernel support for efivarfs
+  if [ -d /sys/firmware/efi/efivars ] &&
 		! mountinfo -q /sys/firmware/efi/efivars; then
 		ebegin "Mounting efivarfs filesystem"
 		mount -n -t efivarfs -o ${sysfs_opts} \
 			efivarfs /sys/firmware/efi/efivars 2> /dev/null
 		eend 0
-	fi
+  fi
 }
 
 mount_binfmt () {
