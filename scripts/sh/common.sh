@@ -1,3 +1,5 @@
+#!/bin/sh
+
 ##
 ## common rc shell functions/subroutines
 ##
@@ -13,6 +15,7 @@
 PNAME=${0:-rc}
 ## where additional service subroutine/function definitions are stored
 #SUBR=/etc/rc.d/rc.subr
+#SUBR=/etc/rc.d/subr.sh
 BOOTLOG=/run/bootlog
 bb=/sbin/busybox
 sh=/bin/mksh
