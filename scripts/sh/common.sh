@@ -558,6 +558,95 @@ load_modules () {
   return 0
 }
 
+## load required Linux kernel modules
+more_modules () {
+  set -- $( uname -a )
+  local f v="${3:-4}" s="${MODS:-/etc/rc.d/rc.modules}"
+
+  case "${v%%.?*}" in
+    2 ) ;;
+    3 ) ;;
+    4 ) ;;
+  esac
+
+  ## match the kernel version by release
+  case "${v%.?*}" in
+    2.2 ) ;;
+    2.3 ) ;;
+    2.4 ) ;;
+    2.5 ) ;;
+    2.6 ) ;;
+    3.0 ) ;;
+    3.1 ) ;;
+    3.2 ) ;;
+    3.3 ) ;;
+    3.4 ) ;;
+    3.5 ) ;;
+    3.6 ) ;;
+    3.7 ) ;;
+    3.8 ) ;;
+    3.9 ) ;;
+    3.10 ) ;;
+    3.11 ) ;;
+    3.12 ) ;;
+    3.13 ) ;;
+    3.14 ) ;;
+    3.15 ) ;;
+    3.16 ) ;;
+    3.17 ) ;;
+    3.18 ) ;;
+    3.19 ) ;;
+    4.0 ) ;;
+    4.1 ) ;;
+    4.2 ) ;;
+    4.3 ) ;;
+    4.4 ) ;;
+    4.5 ) ;;
+    4.6 ) ;;
+    4.7 ) ;;
+    4.8 ) ;;
+    4.9 ) ;;
+    4.10 ) ;;
+    4.11 ) ;;
+    4.12 ) ;;
+    4.13 ) ;;
+    4.14 ) ;;
+    4.15 ) ;;
+    4.16 ) ;;
+    4.17 ) ;;
+    4.18 ) ;;
+    4.19 ) ;;
+    4.20 ) ;;
+  esac
+
+  ## match the kernel version exactly
+  case "${v:-}" in
+    2.6.39 ) ;;
+    3.19.8 ) ;;
+    4.1.12 ) ;;
+    4.1.52 ) ;;
+    4.3.6 ) ;;
+    4.4.166 ) ;;
+    4.9.144 ) ;;
+    4.14.87 ) ;;
+    4.19.8 ) ;;
+  esac
+
+  ## see if module load scripts exist and run them
+  for f in "$s" "${s}-${v%.?*}" "${s}-${v}" ; do
+    if test -f "$f" -a -s "$f" -a -r "$f" ; then
+      #echo "Loading the kernel modules listed in $f ... "
+      echo "Running kernel module load script $f ... "
+      #$sh "$f" &
+      #( . "$f" ) &
+      . "$f"
+      #break
+    fi
+  done
+
+  return 0
+}
+
 restore_clock () {
   ## read the clock config from first arg or try to use default config file
   local f=${1:-/etc/sysconfig/clock}
