@@ -110,24 +110,3 @@ def_env () {
   cd /
 }
 
-source_start_scripts () {
-  if test -d /etc/runit/sh ; then
-    for i in /etc/runit/sh/S?* ; do
-      test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
-    done
-  fi
-}
-
-bootlogd_start () {
-  echo "Starting bootlogd ... "
-  bootlogd -p /run/bootlogd.pid -l /var/log/boot.log || return 1
-}
-
-bootlogd_stop () {
-  test -f /run/bootlogd.pid || return 0
-  echo "Stopping bootlogd ... "
-  touch /var/log/boot.log
-  kill $(< /run/bootlogd.pid)
-  rm -f /run/bootlogd.pid
-}
-

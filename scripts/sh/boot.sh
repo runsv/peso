@@ -49,6 +49,14 @@ start_log () {
   echo "[$PANME] $*" >> "$BOOTLOG"
 }
 
+source_start_scripts () {
+  if test -d /etc/runit/sh ; then
+    for i in /etc/runit/sh/S?* ; do
+      test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
+    done
+  fi
+}
+
 ## bring up the loopback interface
 lo_up () {
   :
@@ -761,13 +769,13 @@ setup_console () {
 }
 
 bootlogd_start () {
-  echo "Starting bootlogd ..."
+  echo "Starting bootlogd ... "
   bootlogd -p /run/bootlogd.pid -l /var/log/boot.log || return 1
 }
 
 bootlogd_stop () {
   test -f /run/bootlogd.pid || return 0
-  echo "Stopping bootlogd ..."
+  echo "Stopping bootlogd ... "
   touch /var/log/boot.log
   kill $(< /run/bootlogd.pid)
   rm -f /run/bootlogd.pid
