@@ -1,4 +1,4 @@
-#!/bin/mksh
+#!/bin/sh
 # -*- shell -*-
 
 ## secure process environment
@@ -12,8 +12,12 @@ trap : 2 3
 
 ## set up default values for variables
 PNAME=${0:-rc}
-## where additional service subroutine/function definitions are stored
-#SUBR=/etc/rc.d/rc.subr
+BOOTLOG=/run/bootlog
+## needed helper subroutine/function definitions
+COMMON=/etc/rc.d/common.sh
+BOOT=/etc/rc.d/boot.sh
+DOWN=/etc/rc.d/shutdown.sh
+SUBR=/etc/rc.d/subr.sh
 BOOTLOG=/run/bootlog
 #PATH=/bin:/sbin:/usr/bin:/usr/sbin
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
@@ -26,27 +30,66 @@ test -f "$sh" -a -x "$sh" && export SHELL=$sh
 #test -t 0 -o -t 1 -o -t 2 && export TERM=linux
 cd /
 
+## load helper function/subroutine definitions for common tasks
+test -f "${COMMON:=/etc/rc.d/common.sh}" -a -r "$COMMON" -a -s "$COMMON" && . "$COMMON"
+
+single () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Entering single user mode ...  \033[0m\n"
+  return 0
+}
+
+start_multi_user () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
+  return 0
+}
+
+stop_multi_user () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Leaving multi user ...  \033[0m\n"
+  return 0
+}
+
+network () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Going multi user ...  \033[0m\n"
+  return 0
+}
+
+start () {
+  echo -e "\n\033[1;32;44m  ${PNAME}: Booting ...  \033[0m\n"
+  mount_pseudofs
+  return 0
+}
+
+stop () {
+  ## avoid staircase effect
+  stty onlcr
+  echo -e "\n\033[1;32;44m  ${PNAME}: Bringing down the system ...  \033[0m\n"
+  return 0
+}
+
 ##
 ## main
 ##
 
 ## decide what to do based on the script's first argument
 case "${1:-}" in
-  start | boot )
+  start | boot | '' )
+    test -f "${BOOT:=/etc/rc.d/boot.sh}" -a -r "$BOOT" -a -s "$BOOT" && . "$BOOT"
+    ## load additional service function/subroutine definitions
+    test -f "${SUBR:=/etc/rc.d/subr.sh}" -a -r "$SUBR" -a -s "$SUBR" && . "$SUBR"
     start
-    exit 0
     ;;
   stop | *down* )
+    test -f "${DOWN:=/etc/rc.d/shutdown.sh}" -a -r "$DOWN" -a -s "$DOWN" && . "$DOWN"
+    ## load additional service function/subroutine definitions
+    test -f "${SUBR:=/etc/rc.d/subr.sh}" -a -r "$SUBR" -a -s "$SUBR" && . "$SUBR"
     stop
-    exit 0
     ;;
   ?* )
     echo "${0}: unknown option $1"
     echo "usage: $0 start|stop"
-    #exit 100
+    exit 100
     ;;
 esac
 
-## we were just sourced to load function definitions in the case of no args
-return 0
+exit 0
 

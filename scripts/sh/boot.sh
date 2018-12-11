@@ -1,26 +1,8 @@
 #!/bin/sh
 
 ##
-## common rc shell functions/subroutines
+## shell helper function/subroutine definitions for system boot
 ##
-
-## output color definitions
-#NORMAL="\\033[0;39m"         # Standard console grey
-#SUCCESS="\\033[1;32m"        # Success is green
-#WARNING="\\033[1;33m"        # Warnings are yellow
-#FAILURE="\\033[1;31m"        # Failures are red
-#INFO="\\033[1;36m"           # Information is light cyan
-#BRACKET="\\033[1;34m"        # Brackets are blue
-## set up default values for variables
-PNAME=${0:-rc}
-## where additional service subroutine/function definitions are stored
-#SUBR=/etc/rc.d/rc.subr
-#SUBR=/etc/rc.d/subr.sh
-BOOTLOG=/run/bootlog
-bb=/sbin/busybox
-sh=/bin/mksh
-#sh=/bin/dash
-test -f "$sh" -a -x "$sh" && export SHELL=$sh
 
 lvm_start () {
   dmsetup mknodes
