@@ -9,6 +9,7 @@ ulimit -Sc 0
 ## ignore keyboard interrupts
 #trap : SIGINT SIGQUIT
 trap : 2 3
+cd /
 
 ## set up default values for variables
 PNAME=${0:-rc}
@@ -26,9 +27,12 @@ export PATH
 bb=/sbin/busybox
 sh=/bin/mksh
 #sh=/bin/dash
-test -f "$sh" -a -x "$sh" && export SHELL=$sh
-#test -t 0 -o -t 1 -o -t 2 && export TERM=linux
-cd /
+test -f "$sh" -a -s "$sh" -a -x "$sh" && export SHELL="$sh"
+
+if test -t 0 -o -t 1 -o -t 2 ; then
+  : ${TERM:=linux}
+  export TERM
+fi
 
 ## load helper function/subroutine definitions for common tasks
 test -f "${COMMON:=/etc/rc.d/common.sh}" -a -r "$COMMON" -a -s "$COMMON" && . "$COMMON"

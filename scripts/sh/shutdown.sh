@@ -1,4 +1,5 @@
 #!/bin/sh
+# -*- shell -*-
 
 ##
 ## shell functions/subroutines for system shutdown
@@ -98,7 +99,4 @@ udev_stop () {
   udevadm control --exit
   udevadm info --cleanup-db
 }
-
-## we were just sourced to load function definitions
-return 0
 

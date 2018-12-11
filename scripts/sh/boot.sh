@@ -1,4 +1,5 @@
 #!/bin/sh
+# -*- shell -*-
 
 ##
 ## shell helper function/subroutine definitions for system boot
@@ -8,16 +9,6 @@ lvm_start () {
   dmsetup mknodes
   vgscan --ignorelockingfailure
   vgchange -ay --ignorelockingfailure
-}
-
-deactivate_vgs () {
-  _group=${1:-All}
-  vgs=$( vgs | wc -l )
-
-  if test "$vgs" -gt 0 ; then
-    msg "Deactivating $_group LVM Volume Groups ... "
-    vgchange -an
-  fi
 }
 
 prepare () {
@@ -54,121 +45,12 @@ set_host_name () {
   fi
 }
 
-msg () {
-  ## bold
-  echo -e "\033[1m=> $*\033[m\n"
-}
-
-msg_ok () {
-  ## bold/green
-  echo -e "\033[1m\033[32m OK\033[m\n"
-}
-
-msg_warn () {
-  ## bold/yellow
-  echo -e "\033[1m\033[33mWARNING: $*\033[m"
-}
-
-msg_error () {
-  ## bold/red
-  echo -e "\033[1m\033[31mERROR: $*\033[m\n"
-}
-
-Log () {
-  echo "[$PANME] $*" >> "$BOOTLOG"
-}
-
-Log_ok () {
-  echo "[$PANME] $*" >> "$BOOTLOG"
-}
-
-Log_warn () {
-  echo "[$PANME] $*" >> "$BOOTLOG"
-}
-
-Log_warn () {
-  echo "[$PANME] $*" >> "$BOOTLOG"
-}
-
 start_log () {
   echo "[$PANME] $*" >> "$BOOTLOG"
 }
 
-## check a given return value
-ev_ret () {
-  local r=${1:-$?}
-
-  if test 0 -eq "$r" ; then
-    echo -e "\tOK"
-  else
-    echo -e "\tFAILED"
-  fi
-
-  return 0
-}
-
-## reverse a given "list"
-## (a string containing a white space separated sequence of substrings)
-rev () {
-  if test 0 -lt "$#" ; then
-    local i r=
-
-    for i in ${1:-} ; do
-      r="$i $r"
-    done
-
-    echo $r
-  fi
-}
-
-is_frs () {
-  test 0 -lt "$#" || return 2
-  local i
-
-  for i ; do
-    test -f "$i" -a -s "$i" -a -r "$i" || return 1
-  done
-
-  return 0
-}
-
-## secure default process environment
-## (shell settings, default permissions, process limits, signals)
-def_env () {
-  set +auf
-  umask 022
-  ulimit -Sc 0
-
-  ## ignore keyboard interrupts
-  #trap : SIGINT SIGQUIT
-  trap : 2 3
-
-  #PATH=/bin:/sbin:/usr/bin:/usr/sbin
-  PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  PATH=${PATH}:/busybox:/usr/busybox:/toybox:/usr/toybox
-  export PATH
-  #test -t 0 -o -t 1 -o -t 2 && export TERM=linux
-  cd /
-}
-
-source_start_scripts () {
-  if test -d /etc/runit/sh ; then
-    for i in /etc/runit/sh/S?* ; do
-      test -f "$i" -a -r "$i" -a -s "$i" && . "$i" start
-    done
-  fi
-}
-
-#start_daemon () {
-#  pgrep "$1" || $@
-#}
-
 ## bring up the loopback interface
 lo_up () {
-  :
-}
-
-lo_down () {
   :
 }
 
@@ -484,12 +366,6 @@ start_localnet () {
   ev_ret "$?"
 }
 
-stop_localnet () {
-  log_info_msg "Bringing down the loopback interface ... "
-  ip link set lo down
-  ev_ret "$?"
-}
-
 load_modules () {
   ## assure that the kernel has module support
   test -f /proc/modules || return 0
@@ -650,12 +526,6 @@ restore_clock () {
   ev_ret "$?"
 }
 
-save_clock () {
-  log_info_msg "Setting hardware clock ... "
-  hwclock --systohc ${CLOCKPARAMS} > /dev/null
-  ev_ret "$?"
-}
-
 check_fs () {
   local m
 
@@ -775,39 +645,6 @@ mount_fs () {
   return "$failed"
 }
 
-unmount_fs () {
-  local KILLDELAY=0
-
-  ## don't unmount virtual file systems like /run
-  log_info_msg "Unmounting all other currently mounted file systems ... "
-  while test "$KILLDELAY" -lt 3 && \
-   ! umount -a -d -r -t notmpfs,nosysfs,nodevtmpfs,noproc,nodevpts > /dev/null
-  do
-    ev_ret "$?"
-    KILLDELAY=$(( KILLDELAY + 1 ))
-    do_stop_sendsignals
-  done
-
-  ev_ret "$?"
-  sync
-  KILLDELAY=0
-  ## make sure / is mounted read only (umount bug)
-  log_info_msg "Remonting root file system in read-only mode..."
-
-  while test "$KILLDELAY" -lt 3 && ! mount -o remount,ro /
-  do
-    ev_ret "$?"
-    KILLDELAY=$((KILLDELAY+1))
-    do_stop_sendsignals
-  done
-
-  ev_ret "$?"
-
-  ## make all LVM volume groups unavailable, if appropriate
-  ## this fails if swap or / are on an LVM partition
-  #if [ -x /sbin/vgchange ]; then /sbin/vgchange -an > /dev/null; fi
-}
-
 clean_fs () {
   log_info_msg "Cleaning file systems: "
 
@@ -839,12 +676,6 @@ clean_fs () {
 swap_on () {
   log_info_msg "Activating all swap files/partitions..."
   swapon -a
-  ev_ret "$?"
-}
-
-swap_off () {
-  log_info_msg "Deactivating all swap files/partitions..."
-  swapoff -a
   ev_ret "$?"
 }
 
@@ -980,11 +811,6 @@ udev_start () {
   log_success_msg2
 }
 
-udev_stop () {
-  udevadm control --exit
-  udevadm info --cleanup-db
-}
-
 udev_retry () {
   log_info_msg "Retrying failed uevents, if any ... "
 
@@ -1015,7 +841,4 @@ udev_retry () {
 
   ev_ret "$?"
 }
-
-## we were just sourced to load function definitions
-return 0
 
