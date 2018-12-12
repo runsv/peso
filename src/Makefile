@@ -125,11 +125,11 @@ rcorder :	hash.o rcorder.o
 	@echo "  LD	$@"
 	$(CROSS)$(LD) $(LDFLAGS) -o $@ $^
 
-tcl.o :		tcl.c
+runtcl.o :	runtcl.c
 	@echo "  CC	$@"
 	$(CROSS)$(CC) $(CFLAGS) $(INCS) -I$(TCL_INC_DIR) -c $^
 
-runtcl :	reboot.o tcl.o
+runtcl :	reboot.o runtcl.o
 	@echo "  LD	$@"
 	$(CROSS)$(LD) $(LDFLAGS) $(TCL_LIBS) -o $@ $^
 
@@ -180,8 +180,6 @@ runsq :
 sq :	runsq
 
 tcl :	runtcl
-
-rexx :
 
 exe :		$(obj) $(bins)
 
