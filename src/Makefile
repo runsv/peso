@@ -187,7 +187,7 @@ strip :		exe
 	$(CROSS)$(STRIP) $(bins) *?.so
 
 clean :
-	$(RM) -f *?\~ *?.o *?.so *?.a a.out runtcl runlua $(bins)
+	@$(RM) -f *?\~ *?.o *?.so *?.a a.out runtcl runlua $(bins)
 
 install-conf :
 
