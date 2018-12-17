@@ -20,13 +20,12 @@ strcmds:
   net: ifup, ifconfig, etc
 
 objcmds:
-  TclX:
-  Ensembles:
+  ensembles:
   id user, uid, convert, group, gid, effective, host, process
   signal default, ignore, error, trap, (g,s)et, (un)block
 
   normal:
-  alarm, exel, chroot, fork, (pg)kill, (sys)link, nice, readdir, sleep,
+  alarm, execl, chroot, fork, (pg)kill, (sys)link, nice, readdir, sleep,
   system, sync, times, umask, wait(pid)
 
   file:
@@ -63,7 +62,7 @@ objcmds:
   ifaddrs.h:
   getifaddrs(3)
 
-  misc :
+  misc:
   utime
   creat, basename,
 
