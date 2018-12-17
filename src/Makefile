@@ -13,30 +13,30 @@
 
 #sinclude ../mk/*?.mk
 
-#PREFIX ?= /usr/local
+PREFIX ?= /usr/local
 DESTDIR ?=
 LUA_MOD_DIR ?= /lib/lua/5.3
 LUA_CMOD_DIR ?= /lib64/lua/5.3
 CROSS ?=
+CP ?= cp
+RM ?= rm -f
+MKDIR ?= mkdir -p
 SHELL ?= /bin/sh
+STRIP ?= strip -s
 #CC ?= gcc -std=gnu99 -g -Os
 #CC = gcc -std=c89
 CC = gcc
 CXX = g++
-LD = gcc
-STRIP ?= strip -s
-CP ?= cp
-RM ?= rm -f
-MKDIR ?= mkdir -p
+LD = gcc -s
 
-## Skalibs libs/headers
+# Skalibs libs/headers
 SKALIBS_HOME = /usr
 SKALIBS_INC_DIR = $(SKALIBS_HOME)/include
 SKALIBS_LIB_DIR = /lib
 SKALIBS_LIB = -L$(SKALIBS_LIB_DIR) -lskarnet
 SKALIBS_STATIC_LIB = $(SKALIBS_LIB_DIR)/skalibs/libskarnet.a
 
-## Lua libs/headers
+# Lua libs/headers
 LUA_HOME = /usr
 TCL_HOME = /usr/local
 LUA_INC_DIR = $(LUA_HOME)/include
@@ -46,7 +46,7 @@ LUA_LIBS = -lm -ldl -L$(LUA_LIB_DIR) -llua
 #LUA_LDFLAGS = -lm -ldl -Wl,-rpath,$(LUA_LIB_DIR)
 LUA_LDFLAGS = -lm -ldl -L$(LUA_LIB_DIR) $(LUA_LIB)
 
-## Squirrel libs/headers
+# Squirrel libs/headers
 SQ_HOME = /usr/local
 SQ_INC_DIR = $(SQ_HOME)/include
 SQ_LIB_DIR = $(SQ_HOME)/lib64
@@ -57,13 +57,13 @@ SQ_CFLAGS =
 SQ_LDFLAGS = $(SQ_LIBS)
 SQ_STATIC_LDFLAGS = -static -Wl,-static $(SQ_LIBS)
 
-## Tcl libs/headers
+# Tcl libs/headers
 TCL_INC_DIR = $(TCL_HOME)/include
 TCL_LIB_DIR = $(TCL_HOME)/lib64
 TCL_LIB = -ltcl8.6
 TCL_LIBS = -L$(TCL_LIB_DIR) $(TCL_LIB)
 
-## OpenRC einfo lib
+# OpenRC einfo lib
 EINFO_INC_DIR = /usr/include
 EINFO_LIB_DIR = /lib64
 EINFO_LIB = $(EINFO_LIB_DIR)/libeinfo.so
@@ -78,7 +78,7 @@ CFLAGS = -Wall -O2 $(INCS)
 # -Wl,-rpath,/path/to/lib,/path/to/other/lib
 #-rpath-link
 #LDFLAGS = -Os -s -Wl,-rpath,/usr/local/lib64:/usr/lib64:/lib64
-LDFLAGS = -O2 -s
+LDFLAGS = -s
 
 inc = $(wildcard *?.h)
 src = $(wildcard *?.c)
@@ -99,9 +99,9 @@ libs =
 	@echo "  CC	$@"
 	$(CROSS)$(CC) -c $(CFLAGS) $<
 
-% :	%.o
-	@echo "  LD	$@"
-	$(CROSS)$(LD) $(LDFLAGS) -o $@ $^
+#% :	%.o
+#	@echo "  LD	$@"
+#	$(CROSS)$(LD) $(LDFLAGS) -o $@ $^
 
 all :	libs exe
 
@@ -127,7 +127,7 @@ rcorder :	hash.o rcorder.o
 
 runtcl.o :	runtcl.c
 	@echo "  CC	$@"
-	$(CROSS)$(CC) $(CFLAGS) $(INCS) -I$(TCL_INC_DIR) -c $^
+	$(CROSS)$(CC) $(CFLAGS) $(INCS) -I$(TCL_INC_DIR) -c $<
 
 runtcl :	reboot.o runtcl.o
 	@echo "  LD	$@"
@@ -264,7 +264,7 @@ install-all :		all lua tcl install install-lua install-tcl
 
 .PHONY :	help clean all install
 
-########################################################################################
+#####################################################################
 
 DESTDIR ?=
 PREFIX ?= /usr/local

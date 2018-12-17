@@ -531,6 +531,12 @@ static int objcmd_fs_is_p ( ClientData cd, Tcl_Interp * T,
   return fs_test ( T, objc, objv, 0, S_IFIFO ) ;
 }
 
+static int objcmd_fs_is_s ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, 0, S_IFSOCK ) ;
+}
+
 static int objcmd_fs_is_c ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -541,6 +547,48 @@ static int objcmd_fs_is_b ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IFBLK ) ;
+}
+
+static int objcmd_fs_is_u ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, 0, S_ISUID ) ;
+}
+
+static int objcmd_fs_is_g ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, 0, S_ISGID ) ;
+}
+
+static int objcmd_fs_is_t ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, 0, S_ISVTX ) ;
+}
+
+static int objcmd_fs_is_r ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, 0, S_IROTH ) ;
+}
+
+static int objcmd_fs_is_w ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, 0, S_IWOTH ) ;
+}
+
+static int objcmd_fs_is_x ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, 0, S_IXOTH ) ;
+}
+
+static int objcmd_fs_is_L ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_test ( T, objc, objv, FTEST_NOFOLLOW, S_IFLNK ) ;
 }
 
 /* see if a given config file exists, is not empty,
@@ -557,6 +605,10 @@ static int objcmd_fs_is_fnrx ( ClientData cd, Tcl_Interp * T,
 {
   return fs_test ( T, objc, objv, FTEST_NONZERO, S_IFREG | S_IROTH | S_IXOTH ) ;
 }
+
+/*
+ * wrappers for POSIX syscalls
+ */
 
 static int objcmd_sync ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
@@ -2043,8 +2095,19 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::is_f", objcmd_fs_is_f, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_d", objcmd_fs_is_d, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_p", objcmd_fs_is_p, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_s", objcmd_fs_is_s, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_c", objcmd_fs_is_c, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_b", objcmd_fs_is_b, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_u", objcmd_fs_is_u, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_g", objcmd_fs_is_g, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_t", objcmd_fs_is_t, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_k", objcmd_fs_is_t, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_r", objcmd_fs_is_r, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_w", objcmd_fs_is_w, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_x", objcmd_fs_is_x, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_L", objcmd_fs_is_L, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_l", objcmd_fs_is_L, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::is_h", objcmd_fs_is_L, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnr", objcmd_fs_is_fnr, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnrx", objcmd_fs_is_fnrx, NULL, NULL ) ;
 
