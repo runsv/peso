@@ -5,6 +5,13 @@
 ## shell helper function/subroutine definitions for system boot
 ##
 
+net_start () {
+  ## static IP configuration via iproute
+  ip link set dev eth0 up
+  ip addr add 192.168.1.2/24 brd + dev eth0
+  ip route add default via 192.168.1.1
+}
+
 lvm_start () {
   dmsetup mknodes
   vgscan --ignorelockingfailure
