@@ -610,6 +610,14 @@ static int objcmd_fs_is_fnrx ( ClientData cd, Tcl_Interp * T,
   return fs_test ( T, objc, objv, FTEST_NONZERO, S_IFREG | S_IROTH | S_IXOTH ) ;
 }
 
+/* flush (the buffers of) all open stdio (output) streams */
+static int objcmd_fflush_all ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  (void) fflush ( NULL ) ;
+  return TCL_OK ;
+}
+
 /*
  * wrappers for POSIX syscalls
  */
@@ -2140,6 +2148,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
+  (void) Tcl_CreateObjCommand ( T, "::ux::fflush_all", objcmd_fflush_all, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sync", objcmd_sync, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause", objcmd_pause, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause_forever", objcmd_pause_forever, NULL, NULL ) ;
