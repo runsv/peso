@@ -71,6 +71,10 @@ objcmds:
 #include "common.h"
 #include <tcl.h>
 
+#ifdef WANT_TK
+# include <tk.h>
+#endif
+
 #define OBJSTREQU(obj1, str1) \
 	( 0 == strcmp ( Tcl_GetStringFromObj ( obj1, NULL ), str1 ) )
 
@@ -2214,7 +2218,11 @@ int Tcl_AppInit ( Tcl_Interp * T )
   }
   */
 
+#ifdef WANT_TK
+  return Tk_Init ( T ) ;
+#else
   return TCL_OK ;
+#endif
 }
 
 /* Module/Library init function */
@@ -2250,8 +2258,12 @@ int main ( const int argc, char ** argv )
   /* set the SOFT (!!) limit for core dumps to zero */
   (void) set_rlimits () ;
 
-  /* Tcl_Main creates a new intereter for us */
+  /* T(cl,k)_Main create the new intereter for us */
+#ifdef WANT_TK
+  Tk_Main ( argc, argv, Tcl_AppInit ) ;
+#else
   Tcl_Main ( argc, argv, Tcl_AppInit ) ;
+#endif
 
   return 0 ;
 }
