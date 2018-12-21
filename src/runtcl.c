@@ -610,8 +610,20 @@ static int objcmd_fs_is_fnrx ( ClientData cd, Tcl_Interp * T,
   return fs_test ( T, objc, objv, FTEST_NONZERO, S_IFREG | S_IROTH | S_IXOTH ) ;
 }
 
+/*
+ * wrappers for IO functions
+ */
+
 /* flush (the buffers of) all open stdio (output) streams */
 static int objcmd_fflush_all ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  (void) fflush ( NULL ) ;
+  return TCL_OK ;
+}
+
+/* write(2) to a given fd */
+static int objcmd_write ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
   (void) fflush ( NULL ) ;
@@ -2237,6 +2249,10 @@ int Tcl_AppInit ( Tcl_Interp * T )
 /* Module/Library init function */
 int ux_Init ( Tcl_Interp * T )
 {
+#ifdef USE_TCL_STUBS
+  (void) Tcl_InitStubs ( T, "8.6", 0 ) ;
+#endif
+
   if ( TCL_OK == Tcl_AppInit ( T ) ) {
     Tcl_PkgProvide ( T, "ux", "0.01" ) ;
     return TCL_OK ;
