@@ -236,24 +236,15 @@ static int do_reboot ( Tcl_Interp * T, const int what )
 {
   sync () ;
 
-  if (
-#if defined (OSsolaris)
-    uadmin ( A_SHUTDOWN, what, NULL )
-#elif defined (OSnetbsd)
-    reboot ( what, NULL )
-#else
-    reboot ( what )
+  if ( reboot ( what
+#if defined (OSsolaris) || defined (OSnetbsd)
+      , NULL
 #endif
-  )
+    ) )
   {
     Tcl_SetErrno ( errno ) ;
     Tcl_AddErrorInfo ( T,
-#if defined (OSsolaris)
-      "uadmin() failed: "
-#else
-      "reboot() failed: "
-#endif
-      ) ;
+      "reboot() failed: " ) ;
     Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
     return TCL_ERROR ;
   }
@@ -429,6 +420,62 @@ static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * T,
 /*
  * bindings for Solaris/SunOS 5 specific syscalls
  */
+
+static int run_uadmin ( Tcl_Interp * T, const int cmd, const int fcn )
+{
+  sync () ;
+
+  if ( uadmin ( cmd, fcn, NULL ) ) {
+    Tcl_SetErrno ( errno ) ;
+    Tcl_AddErrorInfo ( T, "uadmin() failed: " ) ;
+    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
+    return TCL_ERROR ;
+  }
+
+  return TCL_OK ;
+}
+
+/* halt the system with the uadmin(2) syscall */
+static int objcmd_halt ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return run_uadmin ( T, A_SHUTDOWN, AD_HALT ) ;
+}
+
+/* power down the system with the uadmin(2) syscall */
+static int objcmd_poweroff ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return run_uadmin ( T, A_SHUTDOWN, AD_POWEROFF ) ;
+}
+
+/* reboot the system with the uadmin(2) syscall */
+static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return run_uadmin ( T, A_SHUTDOWN, AD_BOOT ) ;
+}
+
+/* reboot the system interactively with the uadmin(2) syscall */
+static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return run_uadmin ( T, A_SHUTDOWN, AD_IBOOT ) ;
+}
+
+/* reboot the system fast with the uadmin(2) syscall */
+static int objcmd_fast_reboot ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return run_uadmin ( T, A_SHUTDOWN, AD_FASTREBOOT ) ;
+}
+
+/* reboot the system with the reboot(3C) syscall */
+static int objcmd_sys_reboot ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_AUTOBOOT ) ;
+}
 
 #else
 #endif
