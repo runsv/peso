@@ -1134,18 +1134,20 @@ static int objcmd_isatty ( ClientData cd, Tcl_Interp * T,
 
     for ( i = 1 ; objc > i ; ++ i ) {
       if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ i ], & f ) ) {
-        if ( 0 > f || 0 == isatty ( f ) ) {
-          Tcl_SetIntObj ( Tcl_GetObjResult ( T ), 0 ) ;
+        if ( 0 > f ) {
+          Tcl_AddErrorInfo ( T, "negative fd" ) ;
+          return TCL_ERROR ;
+        } else if ( 0 == isatty ( f ) ) {
+          Tcl_SetBooleanObj ( Tcl_GetObjResult ( T ), 0 ) ;
           return TCL_OK ;
-          break ;
         }
       } else {
+        Tcl_AddErrorInfo ( T, "fd must be non negative integer" ) ;
         return TCL_ERROR ;
-        break ;
       }
     }
 
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), 1 ) ;
+    Tcl_SetBooleanObj ( Tcl_GetObjResult ( T ), 1 ) ;
     return TCL_OK ;
   }
 
