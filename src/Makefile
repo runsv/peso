@@ -129,7 +129,7 @@ runtcl.o :	runtcl.c
 	@echo "  CC	$@"
 	$(CROSS)$(CC) $(CFLAGS) $(INCS) -I$(TCL_INC_DIR) -c $<
 
-runtcl :	reboot.o runtcl.o
+runtcl :	runtcl.o
 	@echo "  LD	$@"
 	$(CROSS)$(LD) $(LDFLAGS) $(TCL_LIBS) -o $@ $^
 

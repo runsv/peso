@@ -88,8 +88,6 @@ enum {
   FTEST_NONZERO		= 0x04,
 } ;
 
-extern int do_reboot ( const int how ) ;
-
 /* set process resource (upper) limits */
 static int set_rlimits ( void )
 {
@@ -234,18 +232,139 @@ static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
-#if defined (OSLinux)
-/* bindings to some Linux syscalls */
+static int do_reboot ( Tcl_Interp * T, const int what )
+{
+  sync () ;
 
-#elif defined (OSsolaris)
-/* bindings to some Solaris/SunOS 5 syscalls */
+  if (
+#if defined (OSsolaris)
+    uadmin ( A_SHUTDOWN, what, NULL )
+#elif defined (OSnetbsd)
+    reboot ( what, NULL )
+#else
+    reboot ( what )
+#endif
+  )
+  {
+    Tcl_SetErrno ( errno ) ;
+    Tcl_AddErrorInfo ( T,
+#if defined (OSsolaris)
+      "uadmin() failed: "
+#else
+      "reboot() failed: "
+#endif
+      ) ;
+    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
+    return TCL_ERROR ;
+  }
+
+  return TCL_OK ;
+}
+
+#if defined (OSLinux)
+
+/*
+ * bindings for Linux specific syscalls
+ */
+
+/* reboot the system with the reboot(2) syscall */
+static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_AUTOBOOT ) ;
+}
+
+/* halt the system with the reboot(2) syscall */
+static int objcmd_halt ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_HALT_SYSTEM ) ;
+}
+
+/* power down the system with the reboot(2) syscall */
+static int objcmd_poweroff ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_POWER_OFF ) ;
+}
+
+/* hibernate (suspend to disk) the system with the reboot(2) syscall */
+static int objcmd_hibernate ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_SW_SUSPEND ) ;
+}
+
+/* execute new loaded kernel with the reboot(2) syscall */
+static int objcmd_kexec ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_KEXEC ) ;
+}
+
+/* enable the secure attention key sequence with the reboot(2) syscall */
+static int objcmd_cad_on ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_ENABLE_CAD ) ;
+}
+
+/* disable the secure attention key sequence with the reboot(2) syscall */
+static int objcmd_cad_off ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_reboot ( T, RB_ENABLE_CAD ) ;
+}
+
+/* binding for the swapoff(2) syscall */
+static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * path = NULL ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( swapoff ( path ) ) {
+          Tcl_SetErrno ( errno ) ;
+          Tcl_AddErrorInfo ( T, "swapoff() failed: " ) ;
+          Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
+          return TCL_ERROR ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "arg must be non empty file path" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
+  return TCL_ERROR ;
+}
+
+#elif defined (OSdragonfly)
+
+/*
+ * bindings for DrgaonFlyBSD specific syscalls
+ */
 
 #elif defined (OSfreebsd)
+/* swapo(ff,n)(2) */
 
 #elif defined (OSnetbsd)
+/* swapctl(2) */
 
 #elif defined (OSopenbsd)
-/* bindings to some OpenBSD syscalls */
+
+/*
+ * bindings for OpenBSD specific syscalls
+ */
 
 /* binding for the pledge(2) syscall */
 static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
@@ -303,6 +422,15 @@ static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
+/* swapctl(2) */
+
+#elif defined (OSsolaris)
+
+/*
+ * bindings for Solaris/SunOS 5 specific syscalls
+ */
+
+#else
 #endif
 
 /*
@@ -626,8 +754,42 @@ static int objcmd_fflush_all ( ClientData cd, Tcl_Interp * T,
 static int objcmd_write ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  (void) fflush ( NULL ) ;
-  return TCL_OK ;
+  if ( 2 < objc ) {
+    int i, j, fd = -1 ;
+    const char * str = NULL ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & fd ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "fd must be non negative integer" ) ;
+      return TCL_ERROR ;
+    } else if ( 0 > fd ) {
+      Tcl_AddErrorInfo ( T, "negative fd" ) ;
+      return TCL_ERROR ;
+    }
+
+    for ( i = 2 ; objc > i ; ++ i ) {
+      j = -1 ;
+      str = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( 0 <= j && NULL != str ) {
+        const ssize_t s = write ( fd, str, j ) ;
+
+        if ( 0 > s || s != j ) {
+          Tcl_SetErrno ( errno ) ;
+          Tcl_AddErrorInfo ( T, "setsid() failed: " ) ;
+          Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
+          return TCL_ERROR ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "arg must be string" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "fd string [string ...]" ) ;
+  return TCL_ERROR ;
 }
 
 /*
@@ -753,68 +915,6 @@ static int objcmd_umask ( ClientData cd, Tcl_Interp * T,
   }
 
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), (int) m ) ;
-  return TCL_OK ;
-}
-
-static int objcmd_halt ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  sync () ;
-  (void) do_reboot ( 'h' ) ;
-  Tcl_SetErrno ( errno ) ;
-  Tcl_AddErrorInfo ( T, "reboot() failed: " ) ;
-  Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-  return TCL_ERROR ;
-}
-
-static int objcmd_poweroff ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  sync () ;
-  (void) do_reboot ( 'p' ) ;
-  (void) do_reboot ( 'h' ) ;
-  Tcl_SetErrno ( errno ) ;
-  Tcl_AddErrorInfo ( T, "reboot() failed: " ) ;
-  Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-  return TCL_ERROR ;
-}
-
-static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  char how = 'r' ;
-
-  sync () ;
-
-  if ( 1 < objc ) {
-    const char * what = Tcl_GetStringFromObj ( objv [ 1 ], NULL ) ;
-
-    if ( what && * what ) {
-      switch ( * what ) {
-        case 'h' :
-        case 'H' :
-          how = 'h' ;
-          break ;
-        case 'p' :
-        case 'P' :
-          how = 'p' ;
-          break ;
-        case 'r' :
-        case 'R' :
-        default :
-          how = 'r' ;
-          break ;
-      }
-    }
-  }
-
-  if ( do_reboot ( how ) ) {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "reboot() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
-  }
-
   return TCL_OK ;
 }
 
@@ -2161,6 +2261,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
 
   /* add new object commands */
   (void) Tcl_CreateObjCommand ( T, "::ux::fflush_all", objcmd_fflush_all, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::write", objcmd_write, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sync", objcmd_sync, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause", objcmd_pause, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause_forever", objcmd_pause_forever, NULL, NULL ) ;
@@ -2177,9 +2278,6 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::umask", objcmd_umask, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::kill", objcmd_kill, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nice", objcmd_nice, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::halt", objcmd_halt, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::poweroff", objcmd_poweroff, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::reboot", objcmd_reboot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sleep", objcmd_sleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nanosleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nsleep", objcmd_nanosleep, NULL, NULL ) ;
@@ -2197,12 +2295,26 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknfile, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfifo", objcmd_mknfifo, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mksock", objcmd_mksock, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::reboot", objcmd_reboot, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::halt", objcmd_halt, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::poweroff", objcmd_poweroff, NULL, NULL ) ;
 
 #if defined (OSLinux)
+  (void) Tcl_CreateObjCommand ( T, "::ux::hibernate", objcmd_hibernate, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::kexec", objcmd_kexec, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::cad_on", objcmd_cad_on, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::cad_off", objcmd_cad_off, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
+#elif defined (OSdragonfly)
+#elif defined (OSfreebsd)
+#elif defined (OSnetbsd)
 #elif defined (OSopenbsd)
   (void) Tcl_CreateObjCommand ( T, "::ux::pledge", objcmd_pledge, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unveil", objcmd_unveil, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::last_unveil", objcmd_last_unveil, NULL, NULL ) ;
+#elif defined (OSsolaris)
+#elif defined (OSaix)
+#else
 #endif
 
   /* pattern of exported command names */
