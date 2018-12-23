@@ -131,6 +131,16 @@ static size_t str_nlen ( const char * const str, const size_t n )
   return 0 ;
 }
 
+/* helper function to propagate a posix error back to the calling Tcl code */
+static int psx_err ( Tcl_Interp * T, const int e, const char * const msg )
+{
+  Tcl_SetErrno ( e ) ;
+  Tcl_AddErrorInfo ( T, msg ) ;
+  Tcl_AddErrorInfo ( T, "() failed: " ) ;
+  Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
+  return TCL_ERROR ;
+}
+
 static int fs_perm ( Tcl_StatBuf * const stp, mode_t m )
 {
   mode_t i = 0 ;
@@ -242,11 +252,7 @@ static int do_reboot ( Tcl_Interp * T, const int what )
 #endif
     ) )
   {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T,
-      "reboot() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "reboot" ) ;
   }
 
   return TCL_OK ;
@@ -367,10 +373,7 @@ static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
 
     if ( prom && * eprom ) {
       if ( pledge ( prom, eprom ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AddErrorInfo ( T, "pledge() failed: " ) ;
-        Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-        return TCL_ERROR ;
+        return psx_err ( T, errno, "pledge" ) ;
       }
 
       return TCL_OK ;
@@ -391,10 +394,7 @@ static int objcmd_unveil ( ClientData cd, Tcl_Interp * T,
   const char * perm = ( 2 < objc ) ? Tcl_GetStringFromObj ( objv [ 2 ], NULL ) : NULL ;
 
   if ( unveil ( path, perm ) ) {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "pledge() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "unveil" ) ;
   }
 
   return TCL_OK ;
@@ -404,10 +404,7 @@ static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( unveil ( NULL, NULL ) ) {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "pledge() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "unveil" ) ;
   }
 
   return TCL_OK ;
@@ -426,10 +423,7 @@ static int run_uadmin ( Tcl_Interp * T, const int cmd, const int fcn )
   sync () ;
 
   if ( uadmin ( cmd, fcn, NULL ) ) {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "uadmin() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "uadmin" ) ;
   }
 
   return TCL_OK ;
@@ -475,6 +469,38 @@ static int objcmd_sys_reboot ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_AUTOBOOT ) ;
+}
+
+/* signal all processes that are not in our own session with the
+ * sigsendset(3C) syscall
+ */
+static int objcmd_kill_all ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i = SIGTERM ;
+  procset_t pset ;
+
+  if ( 1 < objc ) {
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK ) {
+      if ( 0 > i || NSIG <= i ) {
+        return TCL_ERROR ;
+      }
+    } else {
+      return TCL_ERROR ;
+    }
+  }
+
+  /* define the 2 process sets */
+  pset . p_op = POP_DIFF ;
+  pset . p_lidtype = P_ALL ;
+  pset . p_ridtype = P_SID ;
+  pset . p_rid = P_MYID ;
+
+  if ( sigsendset ( & pset, i ) ) {
+    return psx_err ( T, errno, "sigsendset" ) ;
+  }
+
+  return TCL_OK ;
 }
 
 #else
