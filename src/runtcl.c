@@ -663,10 +663,10 @@ static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * T,
 static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  Tcl_Obj * wd = Tcl_FSGetCwd ( T ) ;
+  Tcl_Obj * cwd = Tcl_FSGetCwd ( T ) ;
 
-  if ( wd ) {
-    Tcl_SetObjResult ( T, wd ) ;
+  if ( cwd ) {
+    Tcl_SetObjResult ( T, cwd ) ;
     return TCL_OK ;
   }
 
@@ -1214,6 +1214,69 @@ static int objcmd_nanosleep ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+static int objcmd_getcwd ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  char cwd [ 1 + PATH_MAX ] = { '\0' } ;
+
+  if ( getcwd ( cwd, sizeof ( cwd ) - 1 ) == NULL ) {
+    return psx_err ( T, errno, "getcwd" ) ;
+  }
+
+  Tcl_SetStringObj ( Tcl_GetObjResult ( T ), cwd, -1 ) ;
+  return TCL_OK ;
+}
+
+static int objcmd_chdir ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i = -1 ;
+    const char * const path = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+
+    if ( ( 0 < i ) && path && * path ) {
+      if ( chdir ( path ) ) {
+        return psx_err ( T, errno, "chdir" ) ;
+      }
+
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "non empty path string required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dir" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_chroot ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i = -1 ;
+    const char * const path = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+
+    if ( ( 0 < i ) && path && * path ) {
+      if ( chdir ( path ) ) {
+        return psx_err ( T, errno, "chdir" ) ;
+      }
+
+      if ( chroot ( path ) ) {
+        return psx_err ( T, errno, "chroot" ) ;
+      }
+
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "non empty path string required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dir" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_isatty ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -1240,31 +1303,6 @@ static int objcmd_isatty ( ClientData cd, Tcl_Interp * T,
   }
 
   Tcl_WrongNumArgs ( T, 1, objv, "fd [fd ...]" ) ;
-  return TCL_ERROR ;
-}
-
-static int objcmd_chroot ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  if ( 1 < objc ) {
-    const char * path = Tcl_GetStringFromObj ( objv [ 1 ], NULL ) ;
-
-    if ( path && * path ) {
-      if ( chroot ( path ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendStringsToObj ( Tcl_GetObjResult ( T ),
-          "chroot to \"", path, "\" failed: ", Tcl_PosixError ( T ),
-          (char *) NULL ) ;
-        return TCL_ERROR ;
-      }
-
-      return TCL_OK ;
-    }
-
-    return TCL_ERROR ;
-  }
-
-  Tcl_WrongNumArgs ( T, 1, objv, "secs nsecs" ) ;
   return TCL_ERROR ;
 }
 
@@ -2430,9 +2468,12 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::nanosleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nsleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::delay", objcmd_delay, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::getcwd", objcmd_getcwd, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::cwd", objcmd_getcwd, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::chdir", objcmd_chdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::chroot", objcmd_chroot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::isatty", objcmd_isatty, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::hostname", objcmd_hostname, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::chroot", objcmd_chroot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::chmod", objcmd_chmod, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unlink", objcmd_unlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::rmdir", objcmd_rmdir, NULL, NULL ) ;
