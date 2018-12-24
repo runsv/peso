@@ -5,12 +5,6 @@
 
 OCaml stdlib: look for relevant file + unix functions
 
-Handling of (POSIX) errors in failing sys/library calls:
- Tcl_SetErrno ( errno ) ;
- Tcl_AddErrorInfo ( T, "fu() failed: " ) ;
- Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
- return TCL_ERROR ;
-
 strcmds:
   vfork_and_exec
   syslog()
@@ -129,6 +123,20 @@ static size_t str_nlen ( const char * const str, const size_t n )
   }
 
   return 0 ;
+}
+
+static int close_fd ( const int fd )
+{
+  if ( 0 <= fd ) {
+    int i = -1 ;
+
+    do { i = close ( fd ) ; }
+    while ( 0 != i && EINTR == errno ) ;
+
+    return i ;
+  }
+
+  return -1 ;
 }
 
 /* helper function to propagate a posix error back to the calling Tcl code */
@@ -815,8 +823,40 @@ static int objcmd_fs_is_fnrx ( ClientData cd, Tcl_Interp * T,
 }
 
 /*
+ * wrappers for functions that operate on file descriptors
+ */
+
+/*
  * wrappers for IO functions
  */
+
+/* wrapper for the close(2) syscall */
+static int objcmd_close ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
+        if ( 0 > j ) {
+          Tcl_AddErrorInfo ( T, "negative fd" ) ;
+          return TCL_ERROR ;
+        } else if ( close_fd ( j ) ) {
+          return psx_err ( T, errno, "close" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "non negative integer arg required" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "fd [fd ...]" ) ;
+  return TCL_ERROR ;
+}
 
 /* flush (the buffers of) all open stdio (output) streams */
 static int objcmd_fflush_all ( ClientData cd, Tcl_Interp * T,
@@ -850,10 +890,7 @@ static int objcmd_write ( ClientData cd, Tcl_Interp * T,
         const ssize_t s = write ( fd, str, j ) ;
 
         if ( 0 > s || s != j ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AddErrorInfo ( T, "setsid() failed: " ) ;
-          Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-          return TCL_ERROR ;
+          return psx_err ( T, errno, "write" ) ;
         }
       } else {
         Tcl_AddErrorInfo ( T, "arg must be string" ) ;
@@ -2438,8 +2475,10 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
-  (void) Tcl_CreateObjCommand ( T, "::ux::fflush_all", objcmd_fflush_all, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::close", objcmd_close, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::close_fd", objcmd_close, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::write", objcmd_write, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::fflush_all", objcmd_fflush_all, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sync", objcmd_sync, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause", objcmd_pause, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause_forever", objcmd_pause_forever, NULL, NULL ) ;
