@@ -934,10 +934,7 @@ static int objcmd_setsid ( ClientData cd, Tcl_Interp * T,
   const pid_t p = setsid () ;
 
   if ( 0 > p ) {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "setsid() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "setsid" ) ;
   }
 
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), (int) p ) ;
@@ -953,13 +950,75 @@ static int objcmd_fork ( ClientData cd, Tcl_Interp * T,
   p = fork () ;
 
   if ( 0 > p ) {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "fork() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "fork" ) ;
   }
 
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), (int) p ) ;
+  return TCL_OK ;
+}
+
+static int objcmd_nodename ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  struct utsname uts ;
+
+  if ( uname ( & uts ) ) {
+    return psx_err ( T, errno, "uname" ) ;
+  }
+
+  Tcl_SetStringObj ( Tcl_GetObjResult ( T ), uts . nodename, -1 ) ;
+  return TCL_OK ;
+}
+
+static int objcmd_sysarch ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  struct utsname uts ;
+
+  if ( uname ( & uts ) ) {
+    return psx_err ( T, errno, "uname" ) ;
+  }
+
+  Tcl_SetStringObj ( Tcl_GetObjResult ( T ), uts . machine, -1 ) ;
+  return TCL_OK ;
+}
+
+static int objcmd_sysname ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  struct utsname uts ;
+
+  if ( uname ( & uts ) ) {
+    return psx_err ( T, errno, "uname" ) ;
+  }
+
+  Tcl_SetStringObj ( Tcl_GetObjResult ( T ), uts . sysname, -1 ) ;
+  return TCL_OK ;
+}
+
+static int objcmd_sysrelease ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  struct utsname uts ;
+
+  if ( uname ( & uts ) ) {
+    return psx_err ( T, errno, "uname" ) ;
+  }
+
+  Tcl_SetStringObj ( Tcl_GetObjResult ( T ), uts . release, -1 ) ;
+  return TCL_OK ;
+}
+
+static int objcmd_sysversion ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  struct utsname uts ;
+
+  if ( uname ( & uts ) ) {
+    return psx_err ( T, errno, "uname" ) ;
+  }
+
+  Tcl_SetStringObj ( Tcl_GetObjResult ( T ), uts . version, -1 ) ;
   return TCL_OK ;
 }
 
@@ -2355,6 +2414,14 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgrp", objcmd_getpgrp, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setsid", objcmd_setsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::fork", objcmd_fork, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::nodename", objcmd_nodename, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sysarch", objcmd_sysarch, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sysname", objcmd_sysname, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::osname", objcmd_sysname, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sysrelease", objcmd_sysrelease, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::osrelease", objcmd_sysrelease, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sysversion", objcmd_sysversion, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::osversion", objcmd_sysversion, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::time", objcmd_time, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umask", objcmd_umask, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::kill", objcmd_kill, NULL, NULL ) ;
