@@ -645,30 +645,33 @@ static int objcmd_pause_forever ( ClientData cd, Tcl_Interp * T,
  * functions using TCLs FS API functions
  */
 
-/*
 static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && 0 == Tcl_FSChdir ( objv [ 1 ] ) ) {
+  if ( 1 < objc ) {
+    if ( Tcl_FSChdir ( objv [ 1 ] ) ) {
+      return psx_err ( T, errno, "chdir" ) ;
+    }
+
     return TCL_OK ;
   }
 
+  Tcl_WrongNumArgs ( T, 1, objv, "dir" ) ;
   return TCL_ERROR ;
 }
 
 static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  Tcl_Obj * optr = Tcl_FSGetCwd ( T ) ;
+  Tcl_Obj * wd = Tcl_FSGetCwd ( T ) ;
 
-  if ( optr ) {
-    Tcl_SetObjResult ( T, optr ) ;
+  if ( wd ) {
+    Tcl_SetObjResult ( T, wd ) ;
     return TCL_OK ;
   }
 
   return TCL_ERROR ;
 }
-*/
 
 static int objcmd_fs_acc_ex ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
@@ -2276,9 +2279,12 @@ int Tcl_AppInit ( Tcl_Interp * T )
 
   if ( NULL == T ) { return TCL_ERROR ; }
 
-  /* create namespace for new commands */
+  /* create a new namespace for the new commands */
   nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
   /* add new object commands to it */
+  (void) Tcl_CreateObjCommand ( T, "::fs::chdir", objcmd_fs_chdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::getcwd", objcmd_fs_getcwd, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::cwd", objcmd_fs_getcwd, NULL, NULL ) ;
   /* access(2) related */
   (void) Tcl_CreateObjCommand ( T, "::fs::ex", objcmd_fs_acc_ex, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::exists", objcmd_fs_acc_ex, NULL, NULL ) ;
