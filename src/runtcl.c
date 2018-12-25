@@ -3,7 +3,7 @@
  *
  * interpreter for TCL scripts.
 
-OCaml stdlib: look for relevant file + unix functions
+Look for relevant file + unix functions in the OCaml stdlib.
 
 strcmds:
   vfork_and_exec
@@ -125,6 +125,7 @@ static size_t str_nlen ( const char * const str, const size_t n )
   return 0 ;
 }
 
+/* close a given file descriptor without interuption by signals */
 static int close_fd ( const int fd )
 {
   if ( 0 <= fd ) {
