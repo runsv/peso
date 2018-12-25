@@ -82,7 +82,7 @@ LDFLAGS = -s
 
 inc = $(wildcard *?.h)
 src = $(wildcard *?.c)
-bin = delay fgrun lux pause pidfsup prcsup rcorder runcmd runlevel setutmpid
+bin = delay fgrun lux pause pidfsup prcsup rcorder runas runlevel setutmpid
 sbin = hardreboot hddown killall5 rmcgroup stage1 stage2 stage3 testinit
 bins = $(bin) $(sbin)
 libs =
