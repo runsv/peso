@@ -1,0 +1,6 @@
+
+This directory contains some Perl helper scripts.
+
+svc_create.px		creates the s6-rc service dirs I use 
+svc_extract.px		generates a Lua script from a given set of s6-rc service dirs
+
