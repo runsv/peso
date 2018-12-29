@@ -5,8 +5,10 @@
 ## creates all used s6-rc services
 ##
 
+use strict ;
+
 # create given (service) dirs
-sub makedir {
+sub makedirs {
   foreach ( @_ ) {
     if ( -e $_ and ! -d $_ ) {
       unlink or die "Can't delete $_: $!" ;
@@ -38,9 +40,17 @@ sub write2file {
   close FH or die "Can't close $f: $!" ;
 }
 
-sub chmod_files {
-  chmod( 00644, @_ ) or
-    die "Can't change permissions of service files ", @_, ": $!" ;
+sub do_chmod {
+  my $m = shift ;
+  chmod( $m, @_ ) or die "Can't change permissions of ", @_, ": $!" ;
+}
+
+sub chmod644 {
+  do_chmod( 00644, @_ ) ;
+}
+
+sub chmod755 {
+  do_chmod( 00755, @_ ) ;
 }
 
 # prepare/set up the service base dir
@@ -75,11 +85,11 @@ sub deproot {
   my( $base, $d ) ;
   $base = $_[ 0 ] ;
   $d = $base . "/00" ;
-  makedir ( $d ) ;
+  makedirs( $d ) ;
   write2file( $d . "/type", "oneshot\n" ) ;
   write2file( $d . "/up", "echo \"Starting root service\"\n" ) ;
   write2file( $d . "/down", "echo \"Stopping root service\"\n" ) ;
-  chmod_files( $d . "/type", $d . "/up", $d . "/down" ) ;
+  chmod644( $d . "/type", $d . "/up", $d . "/down" ) ;
   print "$0: Created the dependency root service in $d\n" ;
 }
 
@@ -87,35 +97,109 @@ sub procfs {
   my( $base, $d ) ;
   $base = $_[ 0 ] ;
   $d = $base . "/procfs" ;
-  makedir ( $d ) ;
+  makedirs( $d ) ;
   write2file( $d . "/type", "oneshot\n" ) ;
   write2file( $d . "/dependencies", "00\n" ) ;
   write2file( $d . "/up", "echo \"Starting root service\"\n" ) ;
-  chmod_files( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
-  print "$0: Created the procfs service in $d\n" ;
+  chmod644( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
+  print "$0: Created the procfs one time task service in $d\n" ;
 }
 
 sub sysfs {
   my( $base, $d ) ;
   $base = $_[ 0 ] ;
   $d = $base . "/sysfs" ;
-  makedir ( $d ) ;
+  makedirs( $d ) ;
   write2file( $d . "/type", "oneshot\n" ) ;
   write2file( $d . "/dependencies", "procfs\n" ) ;
   write2file( $d . "/up", "echo \"Starting root service\"\n" ) ;
-  chmod_files( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
-  print "$0: Created the sysfs service in $d\n" ;
+  chmod644( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
+  print "$0: Created the sysfs one time task service in $d\n" ;
 }
 
 sub pseudofs {
   my( $base, $d ) ;
   $base = $_[ 0 ] ;
   $d = $base . "/pseudofs" ;
-  makedir ( $d ) ;
+  makedirs( $d ) ;
   write2file( $d . "/type", "bundle\n" ) ;
   write2file( $d . "/contents", "procfs\nsysfs\ndevfs\nrun\n" ) ;
-  chmod_files( $d . "/type", $d . "/up", $d . "/contents" ) ;
+  chmod644( $d . "/type", $d . "/up", $d . "/contents" ) ;
   print "$0: Created the pseudofs service bundle in $d\n" ;
+}
+
+sub hostname {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/hostname" ;
+  makedirs( $d ) ;
+  write2file( $d . "/type", "oneshot\n" ) ;
+  write2file( $d . "/dependencies", "procfs\nsysfs\n" ) ;
+  write2file( $d . "/up", "hostname panda\n" ) ;
+  chmod644( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
+  print "$0: Created the hostname one time task service in $d\n" ;
+}
+
+sub loopback {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/loopback" ;
+  makedirs( $d ) ;
+  write2file( $d . "/type", "oneshot\n" ) ;
+  write2file( $d . "/dependencies", "hostname\n" ) ;
+  write2file( $d . "/up", "hostname\n" ) ;
+  write2file( $d . "/down", "hostname\n" ) ;
+  chmod644( $d . "/type", $d . "/up", $d . "/down", $d . "/dependencies" ) ;
+  print "$0: Created the loopback one time task service in $d\n" ;
+}
+
+sub wlan {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/wlan" ;
+  makedirs( $d ) ;
+  write2file( $d . "/type", "oneshot\n" ) ;
+  write2file( $d . "/dependencies", "loopback\n" ) ;
+  write2file( $d . "/up", "rfkill unblock wlan\n" ) ;
+  chmod644( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
+  print "$0: Created the wlan one time task service in $d\n" ;
+}
+
+sub wpa {
+  my( $base, $d, $s ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/wpa" ;
+  $s = "#!/bin/execlineb -P\n\nwpa_supplicant -t -dd -D nl80211,wext,wired -i wlan0 -c /etc/wpa/wpa.conf\n\n" ;
+  makedirs( $d ) ;
+  write2file( $d . "/type", "longrun\n" ) ;
+  write2file( $d . "/dependencies", "wlan\n" ) ;
+  write2file( $d . "/run", $s ) ;
+  chmod644( $d . "/type", $d . "/dependencies", $d . "/run" ) ;
+  print "$0: Created the wpa longrun service in $d\n" ;
+}
+
+sub wpa_log {
+  my( $base, $d, $s ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/wpa-log" ;
+  $s = "#!/bin/execlineb -P\n\ns6-setuidgid nobody\ns6-log T s250000 n3 /var/log/sv/wpa\n\n" ;
+  makedirs( $d ) ;
+  write2file( $d . "/type", "longrun\n" ) ;
+  write2file( $d . "/dependencies", "wlan\n" ) ;
+  write2file( $d . "/run", $s ) ;
+  chmod644( $d . "/type", $d . "/dependencies", $d . "/run" ) ;
+  print "$0: Created the wpa log service in $d\n" ;
+}
+
+sub networking {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/networking" ;
+  makedirs( $d ) ;
+  write2file( $d . "/type", "bundle\n" ) ;
+  write2file( $d . "/contents", "loopback\nwlan\nwpa\ndhcpcd\n" ) ;
+  chmod644( $d . "/type", $d . "/contents" ) ;
+  print "$0: Created the networking service bundle in $d\n" ;
 }
 
 sub create {
@@ -129,6 +213,8 @@ sub create {
   procfs( $d ) ;
   sysfs( $d ) ;
   pseudofs( $d ) ;
+  wpa( $d ) ;
+  wpa_log( $d ) ;
   print "\n$0: Done\n\n" ;
   0 ;
 }
