@@ -1,0 +1,158 @@
+#!/usr/local/bin/perl -w
+# -*- perl -*-
+
+##
+## creates all used s6-rc services
+##
+
+# create given (service) dirs
+sub makedir {
+  foreach ( @_ ) {
+    if ( -e $_ and ! -d $_ ) {
+      unlink or die "Can't delete $_: $!" ;
+    }
+
+    unless ( -d $_ ) {
+      mkdir( $_, 00755 ) or die "Can't create $_: $!" ;
+    }
+
+    if ( -d $_ ) {
+      chmod( 00755, $_ ) or die "Can't create $_: $!" ;
+    } else {
+      print STDERR "$0: Can't create directory $_\n" ;
+      exit 111 ;
+    }
+  }
+}
+
+# write args to a given file
+sub write2file {
+  my $f = shift ;
+
+  open( FH, ">", $f ) or die "Can't open $f for writing: $!" ;
+
+  foreach ( @_ ) {
+    print FH ;
+  }
+
+  close FH or die "Can't close $f: $!" ;
+}
+
+sub chmod_files {
+  chmod( 00644, @_ ) or
+    die "Can't change permissions of service files ", @_, ": $!" ;
+}
+
+# prepare/set up the service base dir
+sub prepare {
+  my $d = $_[ 0 ] ;
+
+  # ensure base dir exists
+  unless ( -e $d ) {
+    mkdir( $d, 00755 ) or die "Can't create base directory $d: $!" ;
+  }
+
+  unless ( -d $d ) {
+    print STDERR "$0: no directory $d\n" ;
+    return 111 ;
+  }
+
+  # correct base dir's permissions
+  chmod( 00755, $d ) or die "Can't change permissions of $d: $!" ;
+
+  if ( -d $d && -x $d && -w $d && -r $d ) {
+    # chdir into the basedir
+    chdir $d or die "Can't chdir to $d: $!" ;
+    return 0 ;
+  }
+
+  print STDERR "$0: $d is not a writable directory !\n" ;
+  111 ;
+}
+
+# root (service) of the dependency graph
+sub deproot {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/00" ;
+  makedir ( $d ) ;
+  write2file( $d . "/type", "oneshot\n" ) ;
+  write2file( $d . "/up", "echo \"Starting root service\"\n" ) ;
+  write2file( $d . "/down", "echo \"Stopping root service\"\n" ) ;
+  chmod_files( $d . "/type", $d . "/up", $d . "/down" ) ;
+  print "$0: Created the dependency root service in $d\n" ;
+}
+
+sub procfs {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/procfs" ;
+  makedir ( $d ) ;
+  write2file( $d . "/type", "oneshot\n" ) ;
+  write2file( $d . "/dependencies", "00\n" ) ;
+  write2file( $d . "/up", "echo \"Starting root service\"\n" ) ;
+  chmod_files( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
+  print "$0: Created the procfs service in $d\n" ;
+}
+
+sub sysfs {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/sysfs" ;
+  makedir ( $d ) ;
+  write2file( $d . "/type", "oneshot\n" ) ;
+  write2file( $d . "/dependencies", "procfs\n" ) ;
+  write2file( $d . "/up", "echo \"Starting root service\"\n" ) ;
+  chmod_files( $d . "/type", $d . "/up", $d . "/dependencies" ) ;
+  print "$0: Created the sysfs service in $d\n" ;
+}
+
+sub pseudofs {
+  my( $base, $d ) ;
+  $base = $_[ 0 ] ;
+  $d = $base . "/pseudofs" ;
+  makedir ( $d ) ;
+  write2file( $d . "/type", "bundle\n" ) ;
+  write2file( $d . "/contents", "procfs\nsysfs\ndevfs\nrun\n" ) ;
+  chmod_files( $d . "/type", $d . "/up", $d . "/contents" ) ;
+  print "$0: Created the pseudofs service bundle in $d\n" ;
+}
+
+sub create {
+  my $d = $_[ 0 ] ;
+  # secure file creation mask
+  umask 00022 ;
+  return 111 if prepare( $d ) ;
+  print "\n$0: Starting to create service dirs in base dir $d ...\n\n" ;
+  # create all defined services now
+  deproot( $d ) ;
+  procfs( $d ) ;
+  sysfs( $d ) ;
+  pseudofs( $d ) ;
+  print "\n$0: Done\n\n" ;
+  0 ;
+}
+
+##
+## main
+##
+
+if ( 0 < $#ARGV and $ARGV[ 0 ] ) {
+  my( $d, $r ) ;
+  $d = $ARGV[ 0 ] ;
+
+  exit 100 unless $d ;
+  $r = length $d ;
+
+  if ( $r and 0 < $r ) {
+    # create all s6-rc services (their directories and files) now
+    exit create( $d ) ;
+  }
+
+  print STDERR "$0: non empty base dir path required\n"
+} else {
+  print STDERR "usage: $0 basedir\n" ;
+}
+
+exit 100 ;
+
