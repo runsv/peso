@@ -82,6 +82,9 @@ enum {
   FTEST_NONZERO		= 0x04,
 } ;
 
+/* global vars */
+static const char * progname = NULL ;
+
 /* set process resource (upper) limits */
 static int set_rlimits ( void )
 {
@@ -2565,11 +2568,15 @@ int Tcl_AppInit ( Tcl_Interp * T )
     Tcl_NewStringObj ( "~/.tclshrc", -1 ), TCL_GLOBAL_ONLY ) ;
   */
 
-  /* read /path/to/tcl/lib/tcl8.6/init.tcl */
-  (void) Tcl_Init ( T ) ;
-  /*
-  if ( TCL_ERROR == Tcl_Init ( T ) ) { return TCL_ERROR ; }
-  */
+  /* read and run /path/to/tcl/lib/tcl8.6/init.tcl */
+  if ( TCL_ERROR == Tcl_Init ( T ) ) {
+    /*
+    return TCL_ERROR ;
+    */
+    (void) fprintf ( stderr,
+      "\n%s: Could not find and source the \"init.tcl\" initialization script!\n\n",
+      ( progname && * progname ) ? progname : "WARNING" ) ;
+  }
 
   /* source above tcl_rcFile ~/.tclrc when running interactively */
   /*
@@ -2623,6 +2630,9 @@ int main ( const int argc, char ** argv )
 
   /* set the SOFT (!!) limit for core dumps to zero */
   (void) set_rlimits () ;
+
+  /* initialize global vars */
+  progname = ( ( 0 < argc ) && * argv && ** argv ) ? * argv : NULL ;
 
   /* T(cl,k)_Main create the new intereter for us */
 #ifdef WANT_TK
