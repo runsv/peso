@@ -254,6 +254,29 @@ static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
+static int sync_files ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
+  const int mode )
+{
+  if ( 1 < objc ) {
+    int i ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      if ( NULL == objv [ i ] ) {
+        return TCL_ERROR ;
+      } else if ( Tcl_FSAccess ( objv [ i ], mode ) ) {
+        Tcl_SetBooleanObj ( Tcl_GetObjResult ( T ), 0 ) ;
+        return TCL_OK ;
+      }
+    }
+
+    Tcl_SetBooleanObj ( Tcl_GetObjResult ( T ), 1 ) ;
+    return TCL_OK ;
+  }
+
+  Tcl_AddErrorInfo ( T, "path arguments required" ) ;
+  return TCL_ERROR ;
+}
+
 static int do_reboot ( Tcl_Interp * T, const int what )
 {
   sync () ;
