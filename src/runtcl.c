@@ -701,6 +701,15 @@ static int strcmd_system ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+/* report the current value of the errno global error indicator variable */
+static int objcmd_get_errno ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  const int e = errno ;
+  Tcl_SetIntObj ( Tcl_GetObjResult ( T ), e ) ;
+  return TCL_OK ;
+}
+
 /* simple obj command that just adds all given integer args */
 static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
@@ -1294,8 +1303,6 @@ static int objcmd_time ( ClientData cd, Tcl_Interp * T,
 static int objcmd_umask ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  mode_t m = 00077 ;
-
   if ( 1 < objc ) {
     int i = 0 ;
 
@@ -1304,15 +1311,14 @@ static int objcmd_umask ( ClientData cd, Tcl_Interp * T,
       return TCL_ERROR ;
     }
 
-    m = 007777 & (mode_t) i ;
-    m = umask ( m ) ;
-  } else {
-    m = umask ( 00077 ) ;
-    (void) umask ( m ) ;
+    i &= 007777 ;
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ),
+      (int) umask ( 007777 & (mode_t) i ) ) ;
+    return TCL_OK ;
   }
 
-  Tcl_SetIntObj ( Tcl_GetObjResult ( T ), (int) m ) ;
-  return TCL_OK ;
+  Tcl_WrongNumArgs ( T, 1, objv, "mask" ) ;
+  return TCL_ERROR ;
 }
 
 static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
@@ -2706,6 +2712,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
+  (void) Tcl_CreateObjCommand ( T, "::ux::get_errno", objcmd_get_errno, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_int", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::addint", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::close", objcmd_close, NULL, NULL ) ;
