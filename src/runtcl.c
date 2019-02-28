@@ -261,10 +261,16 @@ static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
-static int syncit ( const char * const path, const unsigned int what )
+static int fsyncit ( const char * const path, const unsigned int what )
 {
   /* TODO: RDONLY on Linux, WRONLY elsewhere */
-  const int fd = open ( path, O_RDONLY | O_CLOEXEC ) ;
+  const int fd = open ( path,
+#if defined (OSLinux)
+    O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOCTTY
+#else
+    O_WRONLY | O_NONBLOCK | O_CLOEXEC | O_NOCTTY
+#endif
+    ) ;
 
   if ( 0 > fd ) { return -1 ; }
 
