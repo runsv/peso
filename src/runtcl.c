@@ -75,11 +75,18 @@ objcmds:
 #define OBJSTRNEQU(obj1, str1, cnt) \
 	( 0 == strncmp ( Tcl_GetStringFromObj ( obj1, NULL), str1, cnt ) )
 
-/* flag constants */
+/* flag bitmasks that modify the behaviour of certain functions */
 enum {
-  FTEST_NOFOLLOW	= 0x01,
-  FTEST_ZERO		= 0x02,
-  FTEST_NONZERO		= 0x04,
+  EXEC_ARGV0			= 0x01,
+  EXEC_PATH			= 0x02,
+  EXEC_VFORK			= 0x04,
+  EXEC_WAIT			= 0x08,
+  FTEST_NOFOLLOW		= 0x01,
+  FTEST_ZERO			= 0x02,
+  FTEST_NONZERO			= 0x04,
+  SYNC_FSYNC			= 0x01,
+  SYNC_FDATASYNC		= 0x02,
+  SYNC_SYNCFS			= 0x04,
 } ;
 
 /* global vars */
@@ -237,7 +244,7 @@ static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   if ( 1 < objc ) {
     int i ;
 
-    for ( i = 1 ; objc > i ; ++ i ) {
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
       if ( NULL == objv [ i ] ) {
         return TCL_ERROR ;
       } else if ( Tcl_FSAccess ( objv [ i ], mode ) ) {
@@ -254,26 +261,56 @@ static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
-static int sync_files ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
-  const int mode )
+static int syncit ( const char * const path, const unsigned int what )
+{
+  /* TODO: RDONLY on Linux, WRONLY elsewhere */
+  const int fd = open ( path, O_RDONLY | O_CLOEXEC ) ;
+
+  if ( 0 > fd ) { return -1 ; }
+
+  switch ( what ) {
+    case SYNC_FDATASYNC :
+      break ;
+    case SYNC_SYNCFS :
+#if defined (OSLinux)
+#endif
+      break ;
+    case SYNC_FSYNC :
+    default :
+      break ;
+  }
+
+  if ( close_fd ( fd ) ) { return -3 ; }
+
+  return 0 ;
+}
+
+static int mfsync ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
+  const unsigned int what )
 {
   if ( 1 < objc ) {
-    int i ;
+    int i, j ;
+    const char * path = NULL ;
 
-    for ( i = 1 ; objc > i ; ++ i ) {
-      if ( NULL == objv [ i ] ) {
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( syncit ( path, what ) ) {
+          //return psx_err ( T, errno, "fsync" ) ;
+          return TCL_ERROR ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid path argument" ) ;
         return TCL_ERROR ;
-      } else if ( Tcl_FSAccess ( objv [ i ], mode ) ) {
-        Tcl_SetBooleanObj ( Tcl_GetObjResult ( T ), 0 ) ;
-        return TCL_OK ;
       }
     }
 
-    Tcl_SetBooleanObj ( Tcl_GetObjResult ( T ), 1 ) ;
     return TCL_OK ;
   }
 
-  Tcl_AddErrorInfo ( T, "path arguments required" ) ;
+  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -545,12 +582,6 @@ static int objcmd_kill_all ( ClientData cd, Tcl_Interp * T,
  * helper functions
  */
 
-/* flags modifying certain behaviour */
-#define EXEC_ARGV0		0x01
-#define EXEC_PATH		0x02
-#define EXEC_VFORK		0x04
-#define EXEC_WAIT		0x08
-
 /* wait for a given (by its PID) process to terminate */
 static int wait4pid ( Tcl_Interp * T, const char nohang, const pid_t pid )
 {
@@ -644,6 +675,32 @@ static int strcmd_system ( ClientData cd, Tcl_Interp * T,
     return TCL_OK ;
   }
 
+  return TCL_ERROR ;
+}
+
+/* simple obj command that just adds all given integer args */
+static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j, r = 0 ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      j = 0 ;
+
+      if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ i ], & j ) ) {
+        r += j ;
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), r ) ;
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "i1 [i2 ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -2435,13 +2492,10 @@ static int strcmd_mount ( ClientData cd, Tcl_Interp * T,
 /* tclsh application init function */
 int Tcl_AppInit ( Tcl_Interp * T )
 {
-  /* Tcl_Command tcmd ;		*/
-  Tcl_Namespace * nsp = NULL ;
-
   if ( NULL == T ) { return TCL_ERROR ; }
 
   /* create a new namespace for the new commands */
-  nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
+  //nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
   /* add new object commands to it */
   (void) Tcl_CreateObjCommand ( T, "::fs::chdir", objcmd_fs_chdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::getcwd", objcmd_fs_getcwd, NULL, NULL ) ;
@@ -2478,7 +2532,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnrx", objcmd_fs_is_fnrx, NULL, NULL ) ;
 
   /* create namespace for new commands */
-  nsp = Tcl_CreateNamespace ( T, "::ux", NULL, NULL ) ;
+  //nsp = Tcl_CreateNamespace ( T, "::ux", NULL, NULL ) ;
 
   /* add new string commands */
   (void) Tcl_CreateCommand ( T, "::ux::system", strcmd_system, NULL, NULL ) ;
@@ -2502,6 +2556,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
+  (void) Tcl_CreateObjCommand ( T, "::ux::add_int", objcmd_add_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::addint", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::close", objcmd_close, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::close_fd", objcmd_close, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::write", objcmd_write, NULL, NULL ) ;
@@ -2572,6 +2628,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
 #else
 #endif
 
+#if 0
   /* pattern of exported command names */
   (void) Tcl_Export ( T, nsp, "[a-z]?*", 0 ) ;
   /* create command ensembles containing the exported commands */
@@ -2583,6 +2640,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateEnsemble ( T, "::unix", nsp, TCL_ENSEMBLE_PREFIX ) ;
   (void) Tcl_CreateEnsemble ( T, "::os", nsp, TCL_ENSEMBLE_PREFIX ) ;
   (void) Tcl_CreateEnsemble ( T, "::sys", nsp, TCL_ENSEMBLE_PREFIX ) ;
+#endif
 
   (void) Tcl_SetVar ( T, "tcl_rcFileName", "~/.tclrc", TCL_GLOBAL_ONLY ) ;
   /*
