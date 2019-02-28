@@ -84,9 +84,9 @@ enum {
   FTEST_NOFOLLOW		= 0x01,
   FTEST_ZERO			= 0x02,
   FTEST_NONZERO			= 0x04,
-  SYNC_FSYNC			= 0x01,
-  SYNC_FDATASYNC		= 0x02,
-  SYNC_SYNCFS			= 0x04,
+  PSYNC_FSYNC			= 0x01,
+  PSYNC_FDATASYNC		= 0x02,
+  PSYNC_SYNCFS			= 0x04,
 } ;
 
 /* global vars */
@@ -151,9 +151,9 @@ static int close_fd ( const int fd )
 }
 
 /* helper function to propagate a posix error back to the calling Tcl code */
-static int psx_err ( Tcl_Interp * T, const int e, const char * const msg )
+static int psx_err ( Tcl_Interp * T, const int en, const char * const msg )
 {
-  Tcl_SetErrno ( e ) ;
+  Tcl_SetErrno ( en ) ;
   Tcl_AddErrorInfo ( T, msg ) ;
   Tcl_AddErrorInfo ( T, "() failed: " ) ;
   Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
@@ -261,10 +261,14 @@ static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
-static int fsyncit ( const char * const path, const unsigned int what )
+static int sync_file ( Tcl_Interp * T, const char * const path,
+  const unsigned int what )
 {
+  int i = 0 ;
+  const char * s = NULL ;
   /* TODO: RDONLY on Linux, WRONLY elsewhere */
   const int fd = open ( path,
+    /* what about the BSDs ? is read-only sufficient there ? */
 #if defined (OSLinux)
     O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOCTTY
 #else
@@ -272,26 +276,40 @@ static int fsyncit ( const char * const path, const unsigned int what )
 #endif
     ) ;
 
-  if ( 0 > fd ) { return -1 ; }
+  if ( 0 > fd ) {
+    i = errno ;
+    return psx_err ( T, i, "open" ) ;
+  }
 
   switch ( what ) {
-    case SYNC_FDATASYNC :
-      break ;
-    case SYNC_SYNCFS :
-#if defined (OSLinux)
+    case PSYNC_FDATASYNC :
+#if defined (_POSIX_SYNCHRONIZED_IO) && (0 < _POSIX_SYNCHRONIZED_IO)
+      if ( fdatasync ( fd ) ) { i = errno ; s = "fdatasync" ; }
 #endif
       break ;
-    case SYNC_FSYNC :
+    case PSYNC_SYNCFS :
+#if defined (OSLinux)
+      if ( syncfs ( fd ) ) { i = errno ; s = "syncfs" ; }
+#endif
+      break ;
+    case PSYNC_FSYNC :
     default :
+      if ( fsync ( fd ) ) { i = errno ; s = "fsync" ; }
       break ;
   }
 
-  if ( close_fd ( fd ) ) { return -3 ; }
+  if ( close_fd ( fd ) ) {
+    return psx_err ( T, errno, "close" ) ;
+  }
 
-  return 0 ;
+  if ( i ) {
+    return psx_err ( T, i, ( s && * s ) ? s : "fsync" ) ;
+  }
+
+  return TCL_OK ;
 }
 
-static int mfsync ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
+static int mpsync ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   const unsigned int what )
 {
   if ( 1 < objc ) {
@@ -303,12 +321,11 @@ static int mfsync ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
       path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
       if ( ( 0 < j ) && path && * path ) {
-        if ( syncit ( path, what ) ) {
-          //return psx_err ( T, errno, "fsync" ) ;
+        if ( sync_file ( T, path, what ) != TCL_OK ) {
           return TCL_ERROR ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "invalid path argument" ) ;
+        Tcl_AddErrorInfo ( T, "invalid file name" ) ;
         return TCL_ERROR ;
       }
     }
@@ -316,7 +333,7 @@ static int mfsync ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
     return TCL_OK ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
+  Tcl_WrongNumArgs ( T, 1, objv, "file [file ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -1004,6 +1021,40 @@ static int objcmd_sync ( ClientData cd, Tcl_Interp * T,
 {
   sync () ;
   return TCL_OK ;
+}
+
+static int objcmd_fsync ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return mpsync ( T, objc, objv, PSYNC_FSYNC ) ;
+}
+
+static int objcmd_fdatasync ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+#if defined (_POSIX_SYNCHRONIZED_IO) && (0 < _POSIX_SYNCHRONIZED_IO)
+  return mpsync ( T, objc, objv, PSYNC_FDATASYNC ) ;
+#else
+  /*
+  Tcl_AddErrorInfo ( T, "Platform does not support the fdatasync(2) syscall" ) ;
+  return TCL_ERROR ;
+  */
+  return psx_err ( T, ENOSYS, "fdatasync" ) ;
+#endif
+}
+
+static int objcmd_syncfs ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+#if defined (OSLinux)
+  return mpsync ( T, objc, objv, PSYNC_SYNCFS ) ;
+#else
+  /*
+  Tcl_AddErrorInfo ( T, "Platform does not support the syncfs(2) syscall" ) ;
+  return TCL_ERROR ;
+  */
+  return psx_err ( T, ENOSYS, "syncfs" ) ;
+#endif
 }
 
 static int objcmd_getuid ( ClientData cd, Tcl_Interp * T,
@@ -2498,10 +2549,17 @@ static int strcmd_mount ( ClientData cd, Tcl_Interp * T,
 /* tclsh application init function */
 int Tcl_AppInit ( Tcl_Interp * T )
 {
+  /*
+  Tcl_Namespace * nsp = NULL ;
+  */
+
   if ( NULL == T ) { return TCL_ERROR ; }
 
   /* create a new namespace for the new commands */
-  //nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
+  /*
+  nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
+  */
+
   /* add new object commands to it */
   (void) Tcl_CreateObjCommand ( T, "::fs::chdir", objcmd_fs_chdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::getcwd", objcmd_fs_getcwd, NULL, NULL ) ;
@@ -2538,7 +2596,9 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnrx", objcmd_fs_is_fnrx, NULL, NULL ) ;
 
   /* create namespace for new commands */
-  //nsp = Tcl_CreateNamespace ( T, "::ux", NULL, NULL ) ;
+  /*
+  nsp = Tcl_CreateNamespace ( T, "::ux", NULL, NULL ) ;
+  */
 
   /* add new string commands */
   (void) Tcl_CreateCommand ( T, "::ux::system", strcmd_system, NULL, NULL ) ;
@@ -2569,6 +2629,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::write", objcmd_write, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::fflush_all", objcmd_fflush_all, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sync", objcmd_sync, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::fsync", objcmd_fsync, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::fdatasync", objcmd_fdatasync, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause", objcmd_pause, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause_forever", objcmd_pause_forever, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getuid", objcmd_getuid, NULL, NULL ) ;
@@ -2616,12 +2678,18 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::halt", objcmd_halt, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::poweroff", objcmd_poweroff, NULL, NULL ) ;
 
+  /* add platform specific (object) commands to current interpreter */
+#if defined (OSbsd)
+  /* wrappers to syscalls common to ALL of the BSDs */
+#endif
+
 #if defined (OSLinux)
   (void) Tcl_CreateObjCommand ( T, "::ux::hibernate", objcmd_hibernate, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::kexec", objcmd_kexec, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cad_on", objcmd_cad_on, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cad_off", objcmd_cad_off, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::syncfs", objcmd_syncfs, NULL, NULL ) ;
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
 #elif defined (OSnetbsd)
@@ -2629,9 +2697,9 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::pledge", objcmd_pledge, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unveil", objcmd_unveil, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::last_unveil", objcmd_last_unveil, NULL, NULL ) ;
-#elif defined (OSsolaris)
 #elif defined (OSaix)
-#else
+#elif defined (OShpux)
+#elif defined (OSsolaris) || defined (OSsunos5)
 #endif
 
 #if 0
