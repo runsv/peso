@@ -797,6 +797,38 @@ static int objcmd_add_double ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
+static int objcmd_exit ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i = 0 ;
+
+  if ( 1 < objc && NULL != objv [ 1 ] &&
+    Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+    return TCL_ERROR ;
+  }
+
+  exit ( i ) ;
+  return TCL_OK ;
+}
+
+static int objcmd_uexit ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i = 0 ;
+
+  if ( 1 < objc && NULL != objv [ 1 ] &&
+    Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+    return TCL_ERROR ;
+  }
+
+  _exit ( i ) ;
+  return TCL_OK ;
+}
+
 /*
  * signal handling
  */
@@ -2783,6 +2815,9 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::add_wide", objcmd_add_wide_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::addwide", objcmd_add_wide_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_double", objcmd_add_double, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::exit", objcmd_exit, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::uexit", objcmd_uexit, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::_exit", objcmd_uexit, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::close", objcmd_close, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::close_fd", objcmd_close, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::write", objcmd_write, NULL, NULL ) ;
