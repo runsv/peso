@@ -80,7 +80,7 @@ enum {
   EXEC_ARGV0			= 0x01,
   EXEC_PATH			= 0x02,
   EXEC_VFORK			= 0x04,
-  EXEC_WAIT			= 0x08,
+  EXEC_VFORK_WAITPID		= 0x08,
   FTEST_NOFOLLOW		= 0x01,
   FTEST_ZERO			= 0x02,
   FTEST_NONZERO			= 0x04,
