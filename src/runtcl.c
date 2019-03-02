@@ -731,6 +731,72 @@ static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
+/* simple obj command that just adds all given long integer args */
+static int objcmd_add_long_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i ;
+  long int j, r = 0 ;
+
+  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    j = 0 ;
+
+    if ( TCL_OK == Tcl_GetLongFromObj ( T, objv [ i ], & j ) ) {
+      r += j ;
+    } else {
+      Tcl_AddErrorInfo ( T, "invalid long integer arg" ) ;
+      return TCL_ERROR ;
+    }
+  }
+
+  Tcl_SetLongObj ( Tcl_GetObjResult ( T ), r ) ;
+  return TCL_OK ;
+}
+
+/* simple obj command that just adds all given wide integer args */
+static int objcmd_add_wide_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i ;
+  Tcl_WideInt j, r = 0 ;
+
+  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    j = 0 ;
+
+    if ( TCL_OK == Tcl_GetWideIntFromObj ( T, objv [ i ], & j ) ) {
+      r += j ;
+    } else {
+      Tcl_AddErrorInfo ( T, "invalid wide integer arg" ) ;
+      return TCL_ERROR ;
+    }
+  }
+
+  Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), r ) ;
+  return TCL_OK ;
+}
+
+/* simple obj command that just adds all given double floating point number */
+static int objcmd_add_double ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i ;
+  double d, r = 0.0 ;
+
+  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    d = 0.0 ;
+
+    if ( TCL_OK == Tcl_GetDoubleFromObj ( T, objv [ i ], & d ) ) {
+      r += d ;
+    } else {
+      Tcl_AddErrorInfo ( T, "invalid double floating point number" ) ;
+      return TCL_ERROR ;
+    }
+  }
+
+  Tcl_SetDoubleObj ( Tcl_GetObjResult ( T ), r ) ;
+  return TCL_OK ;
+}
+
 /*
  * signal handling
  */
@@ -2710,6 +2776,13 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::get_errno", objcmd_get_errno, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_int", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::addint", objcmd_add_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::add_long_int", objcmd_add_long_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::add_long", objcmd_add_long_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::addlong", objcmd_add_long_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::add_wide_int", objcmd_add_wide_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::add_wide", objcmd_add_wide_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::addwide", objcmd_add_wide_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::add_double", objcmd_add_double, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::close", objcmd_close, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::close_fd", objcmd_close, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::write", objcmd_write, NULL, NULL ) ;
