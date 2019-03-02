@@ -714,26 +714,21 @@ static int objcmd_get_errno ( ClientData cd, Tcl_Interp * T,
 static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc ) {
-    int i, j, r = 0 ;
+  int i, j, r = 0 ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
-      j = 0 ;
+  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    j = 0 ;
 
-      if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ i ], & j ) ) {
-        r += j ;
-      } else {
-        Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
-        return TCL_ERROR ;
-      }
+    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ i ], & j ) ) {
+      r += j ;
+    } else {
+      Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+      return TCL_ERROR ;
     }
-
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), r ) ;
-    return TCL_OK ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, objv, "i1 [i2 ...]" ) ;
-  return TCL_ERROR ;
+  Tcl_SetIntObj ( Tcl_GetObjResult ( T ), r ) ;
+  return TCL_OK ;
 }
 
 /*
