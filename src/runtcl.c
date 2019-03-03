@@ -817,6 +817,30 @@ static int objcmd_bit_and_int ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+/* simple obj command that just bitwise ANDs all given integer args */
+static int objcmd_bit_or_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc ) {
+    int i, j, r = 0 ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
+        r |= j ;
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), r ) ;
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "num num [num ...]" ) ;
+  return TCL_ERROR ;
+}
+
 /* simple obj command that just adds all given integer args */
 static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
@@ -2923,6 +2947,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::bitnegwide", objcmd_bit_neg_wide_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::bit_and_int", objcmd_bit_and_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::bitandint", objcmd_bit_and_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bit_or_int", objcmd_bit_or_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bitorint", objcmd_bit_or_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_int", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::addint", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_long_int", objcmd_add_long_int, NULL, NULL ) ;
