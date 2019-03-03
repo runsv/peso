@@ -710,6 +710,90 @@ static int objcmd_get_errno ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
+/* simple obj command that bitwise negates the given integer arg */
+static int objcmd_bit_neg_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    int i = 0 ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+      return TCL_ERROR ;
+    }
+
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), i ) ;
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "num" ) ;
+  return TCL_ERROR ;
+}
+
+/* simple obj command that bitwise negates the given long integer arg */
+static int objcmd_bit_neg_long_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    long int i = 0 ;
+
+    if ( Tcl_GetLongFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "invalid long integer arg" ) ;
+      return TCL_ERROR ;
+    }
+
+    Tcl_SetLongObj ( Tcl_GetObjResult ( T ), i ) ;
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "num" ) ;
+  return TCL_ERROR ;
+}
+
+/* simple obj command that bitwise negates the given wide integer arg */
+static int objcmd_bit_neg_wide_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    Tcl_WideInt i = 0 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "invalid wide integer arg" ) ;
+      return TCL_ERROR ;
+    }
+
+    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), i ) ;
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "num" ) ;
+  return TCL_ERROR ;
+}
+
+/* simple obj command that just bitwise ANDs all given integer args */
+static int objcmd_bit_and_int ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc ) {
+    int i, j, r = ~ 0 ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
+        r &= j ;
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), r ) ;
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "num num [num ...]" ) ;
+  return TCL_ERROR ;
+}
+
 /* simple obj command that just adds all given integer args */
 static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
@@ -719,7 +803,7 @@ static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
   for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
     j = 0 ;
 
-    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ i ], & j ) ) {
+    if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
       r += j ;
     } else {
       Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
@@ -741,7 +825,7 @@ static int objcmd_add_long_int ( ClientData cd, Tcl_Interp * T,
   for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
     j = 0 ;
 
-    if ( TCL_OK == Tcl_GetLongFromObj ( T, objv [ i ], & j ) ) {
+    if ( Tcl_GetLongFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
       r += j ;
     } else {
       Tcl_AddErrorInfo ( T, "invalid long integer arg" ) ;
@@ -763,7 +847,7 @@ static int objcmd_add_wide_int ( ClientData cd, Tcl_Interp * T,
   for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
     j = 0 ;
 
-    if ( TCL_OK == Tcl_GetWideIntFromObj ( T, objv [ i ], & j ) ) {
+    if ( Tcl_GetWideIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
       r += j ;
     } else {
       Tcl_AddErrorInfo ( T, "invalid wide integer arg" ) ;
@@ -785,7 +869,7 @@ static int objcmd_add_double ( ClientData cd, Tcl_Interp * T,
   for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
     d = 0.0 ;
 
-    if ( TCL_OK == Tcl_GetDoubleFromObj ( T, objv [ i ], & d ) ) {
+    if ( Tcl_GetDoubleFromObj ( T, objv [ i ], & d ) == TCL_OK ) {
       r += d ;
     } else {
       Tcl_AddErrorInfo ( T, "invalid double floating point number" ) ;
@@ -2806,6 +2890,16 @@ int Tcl_AppInit ( Tcl_Interp * T )
 
   /* add new object commands */
   (void) Tcl_CreateObjCommand ( T, "::ux::get_errno", objcmd_get_errno, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bit_neg_int", objcmd_bit_neg_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bitnegint", objcmd_bit_neg_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bit_neg_long_int", objcmd_bit_neg_long_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bit_neg_long", objcmd_bit_neg_long_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bitneglong", objcmd_bit_neg_long_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bit_neg_wide_int", objcmd_bit_neg_wide_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bit_neg_wide", objcmd_bit_neg_wide_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bitnegwide", objcmd_bit_neg_wide_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bit_and_int", objcmd_bit_and_int, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::bitandint", objcmd_bit_and_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_int", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::addint", objcmd_add_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_long_int", objcmd_add_long_int, NULL, NULL ) ;
