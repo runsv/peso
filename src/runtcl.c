@@ -356,6 +356,19 @@ static int do_reboot ( Tcl_Interp * T, const int what )
 #if defined (OSLinux)
 
 /*
+ * helper functions that operate on bitmask flags of Linux secific syscalls
+ */
+
+/* bitwise ored flags for the mount(2) syscall */
+static int objcmd_bit_or_flags_mount ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  unsigned long int f = 0 ;
+  Tcl_SetLongObj ( Tcl_GetObjResult ( T ), f ) ;
+  return TCL_OK ;
+}
+
+/*
  * bindings for Linux specific syscalls
  */
 
@@ -458,6 +471,15 @@ static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
  * bindings for OpenBSD specific syscalls
  */
 
+/* binding for arc4random(3) */
+static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  /* arc4random returns an uint32 value */
+  Tcl_SetLongObj ( Tcl_GetObjResult ( T ), arc4random () ) ; 
+  return TCL_OK ;
+}
+
 /* binding for the pledge(2) syscall */
 static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
@@ -506,6 +528,7 @@ static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * T,
 }
 
 /* swapctl(2) */
+/* sendsyslog(2) */
 
 #elif defined (OSsolaris)
 
