@@ -412,38 +412,6 @@ static int objcmd_cad_off ( ClientData cd, Tcl_Interp * T,
   return do_reboot ( T, RB_ENABLE_CAD ) ;
 }
 
-/* binding for the swapoff(2) syscall */
-static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  if ( 1 < objc ) {
-    int i, j ;
-    const char * path = NULL ;
-
-    for ( i = 1 ; objc > i ; ++ i ) {
-      j = -1 ;
-      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
-
-      if ( ( 0 < j ) && path && * path ) {
-        if ( swapoff ( path ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AddErrorInfo ( T, "swapoff() failed: " ) ;
-          Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-          return TCL_ERROR ;
-        }
-      } else {
-        Tcl_AddErrorInfo ( T, "arg must be non empty file path" ) ;
-        return TCL_ERROR ;
-      }
-    }
-
-    return TCL_OK ;
-  }
-
-  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
-  return TCL_ERROR ;
-}
-
 #elif defined (OSdragonfly)
 
 /*
@@ -521,35 +489,6 @@ static int objcmd_force_unmount ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_unmount ( T, objc, objv, MNT_FORCE ) ;
-}
-
-/* binding for the swapoff(2) syscall */
-static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  if ( 1 < objc ) {
-    int i, j ;
-    const char * path = NULL ;
-
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
-      j = -1 ;
-      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
-
-      if ( ( 0 < j ) && path && * path ) {
-        if ( swapoff ( path ) ) {
-          return psx_err ( T, errno, "swapoff" ) ;
-        }
-      } else {
-        Tcl_AddErrorInfo ( T, "invalid swap device path" ) ;
-        return TCL_ERROR ;
-      }
-    }
-
-    return TCL_OK ;
-  }
-
-  Tcl_WrongNumArgs ( T, 1, objv, "dev [dev ...]" ) ;
-  return TCL_ERROR ;
 }
 
 /* binding for the swapon(2) syscall */
@@ -2870,6 +2809,44 @@ static int objcmd_mksock ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+/* binding for the swapoff(2) syscall */
+static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+#if defined (OSLinux) || defined (OSdragonfly) || defined (OSfreebsd) || \
+  defined (OSnetbsd) || defined (OSopenbsd)
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * path = NULL ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if (
+#if defined (OSnetbsd) || defined (OSopenbsd)
+          swapctl ( SWAP_OFF, path, 0 )
+#else
+          swapoff ( path )
+#endif
+        ) { return psx_err ( T, errno, "swapoff" ) ; }
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid swap device path" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dev [dev ...]" ) ;
+#else
+  Tcl_AddErrorInfo ( T, "Platform not supported" ) ;
+#endif
+  return TCL_ERROR ;
+}
+
 static int strcmd_mount ( ClientData cd, Tcl_Interp * T,
   const int argc, const char ** argv )
 {
@@ -3014,11 +2991,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateCommand ( T, "::ux::execl0", strcmd_execl0, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::execlp", strcmd_execlp, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::execlp0", strcmd_execlp0, NULL, NULL ) ;
-  /*
-  (void) Tcl_CreateCommand ( T, "::ux::chdir", strcmd_chdir, NULL, NULL ) ;
-  */
   (void) Tcl_CreateCommand ( T, "::ux::pivot_root", strcmd_pivot_root, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::swapoff", strcmd_swapoff, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::umount", strcmd_umount, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::umount2", strcmd_umount2, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::rename", strcmd_rename, NULL, NULL ) ;
@@ -3107,6 +3080,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknfile, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfifo", objcmd_mknfifo, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mksock", objcmd_mksock, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::reboot", objcmd_reboot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::halt", objcmd_halt, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::poweroff", objcmd_poweroff, NULL, NULL ) ;
@@ -3121,7 +3095,6 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::kexec", objcmd_kexec, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cad_on", objcmd_cad_on, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cad_off", objcmd_cad_off, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::syncfs", objcmd_syncfs, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::psyncfs", objcmd_psyncfs, NULL, NULL ) ;
 #elif defined (OSdragonfly)
@@ -3129,7 +3102,6 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::powercycle", objcmd_powercycle, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_unmount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::force_unmount", objcmd_force_unmount, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::swapon", objcmd_swapon, NULL, NULL ) ;
 #elif defined (OSnetbsd)
 #elif defined (OSopenbsd)
