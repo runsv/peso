@@ -1534,6 +1534,41 @@ static int objcmd_getsid ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
+static int objcmd_setpgid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i = 0 ;
+  pid_t p = 0, pg = 0 ;
+
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    i = 0 ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "invalid pid" ) ;
+      return TCL_ERROR ;
+    }
+
+    p = (pid_t) i ;
+  }
+
+  if ( 2 < objc && NULL != objv [ 2 ] ) {
+    i = 0 ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 2 ], & i ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "invalid pid" ) ;
+      return TCL_ERROR ;
+    }
+
+    pg = (pid_t) i ;
+  }
+
+  if ( setpgid ( p, pg ) ) {
+    return psx_err ( T, errno, "setpgid" ) ;
+  }
+
+  return TCL_OK ;
+}
+
 static int objcmd_setsid ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3100,6 +3135,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgrp", objcmd_getpgrp, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgid", objcmd_getpgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getsid", objcmd_getsid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setpgid", objcmd_setpgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setsid", objcmd_setsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::fork", objcmd_fork, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nodename", objcmd_nodename, NULL, NULL ) ;
