@@ -356,17 +356,8 @@ static int do_reboot ( Tcl_Interp * T, const int what )
 #if defined (OSLinux)
 
 /*
- * helper functions that operate on bitmask flags of Linux secific syscalls
+ * helper functions that operate on bitmask flags of Linux specific syscalls
  */
-
-/* bitwise ored flags for the mount(2) syscall */
-static int objcmd_bit_or_flags_mount ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  unsigned long int f = 0 ;
-  Tcl_SetLongObj ( Tcl_GetObjResult ( T ), f ) ;
-  return TCL_OK ;
-}
 
 /*
  * bindings for Linux specific syscalls
@@ -460,9 +451,138 @@ static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
  */
 
 #elif defined (OSfreebsd)
-/* swapo(ff,n)(2) */
+
+/*
+ * helper functions that operate on bitmask flags of FreeBSD specific syscalls
+ */
+
+/* bitwise ored flags for the mount(2) syscall */
+static int objcmd_bit_or_flags_mount ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i, f = 0 ;
+  Tcl_SetIntObj ( Tcl_GetObjResult ( T ), f ) ;
+  return TCL_OK ;
+}
+
+/*
+ * bindings for FreeBSD specific syscalls
+ */
+
+static int powercycle ( Tcl_interp * T, const int objc,
+  Tcl_Obj * const * objv, const int f )
+{
+  sync () ;
+
+  if ( reboot ( RB_HALT | RB_POWERCYCLE ) ) {
+    return psx_err ( T, errno, "reboot" ) ;
+  }
+
+  return TCL_OK ;
+}
+
+/* helper function that does the real work for the unmount(2) bindings */
+static int do_unmount ( Tcl_interp * T, const int objc,
+  Tcl_Obj * const * objv, const int f )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * path = NULL ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( unmount ( path, f ) ) {
+          return psx_err ( T, errno, "unmount" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid mountpoint path" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dir [dir ...]" ) ;
+  return TCL_ERROR ;
+}
+
+/* bindings for the unmount(2) syscall */
+static int objcmd_unmount ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_unmount ( T, objc, objv, 0 ) ;
+}
+
+static int objcmd_force_unmount ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return do_unmount ( T, objc, objv, MNT_FORCE ) ;
+}
+
+/* binding for the swapoff(2) syscall */
+static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * path = NULL ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( swapoff ( path ) ) {
+          return psx_err ( T, errno, "swapoff" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid swap device path" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dev [dev ...]" ) ;
+  return TCL_ERROR ;
+}
+
+/* binding for the swapon(2) syscall */
+static int objcmd_swapon ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * path = NULL ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( swapon ( path ) ) {
+          return psx_err ( T, errno, "swapon" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "invalid swap device path" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dev [dev ...]" ) ;
+  return TCL_ERROR ;
+}
 
 #elif defined (OSnetbsd)
+
 /* swapctl(2) */
 
 #elif defined (OSopenbsd)
@@ -530,7 +650,7 @@ static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * T,
 /* swapctl(2) */
 /* sendsyslog(2) */
 
-#elif defined (OSsolaris)
+#elif defined (OSsolaris) || defined (OSsunos5)
 
 /*
  * bindings for Solaris/SunOS 5 specific syscalls
@@ -3032,6 +3152,11 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::psyncfs", objcmd_psyncfs, NULL, NULL ) ;
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
+  (void) Tcl_CreateObjCommand ( T, "::ux::powercycle", objcmd_powercycle, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_unmount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::force_unmount", objcmd_force_unmount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::swapon", objcmd_swapon, NULL, NULL ) ;
 #elif defined (OSnetbsd)
 #elif defined (OSopenbsd)
   (void) Tcl_CreateObjCommand ( T, "::ux::pledge", objcmd_pledge, NULL, NULL ) ;
