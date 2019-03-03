@@ -30,10 +30,10 @@ objcmds:
   mass mknod: mksock, mkfile, mkfifos, mkdev, ...
   exec*, (v)fork, nice
   access, chdir, alarm
-  (l)ch(mod,own), get(u,g,p(p,g),s)id, getpgrp, (g,s)ethost(id,name),
+  (l)ch(mod,own), get(u,g,p(p,g),s)id, (g,s)ethost(id,name),
   (g,s)etlogin,
   link, pipe, readlink
-  setsid, setpgid, setr(e)s(gu)id, symlink, truncate, ttyname
+  setr(e)s(gu)id, symlink, truncate, ttyname
 
   resources.h :
   (g,s)et(rlimit,priority,rusage)
@@ -1704,16 +1704,11 @@ static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
         for ( i = 2 ; objc > i ; ++ i ) {
           if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & p ) && 0 < p ) {
             if ( kill ( p, s ) ) {
-              Tcl_SetErrno ( errno ) ;
-              Tcl_AddErrorInfo ( T, "kill() failed: " ) ;
-              Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-              return TCL_ERROR ;
-              break ;
+              return psx_err ( T, errno, "kill" ) ;
             }
           } else {
             Tcl_AddErrorInfo ( T, "positive integer arg required" ) ;
             return TCL_ERROR ;
-            break ;
           }
         }
 
