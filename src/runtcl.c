@@ -1865,7 +1865,7 @@ static int objcmd_chdir ( ClientData cd, Tcl_Interp * T,
 static int objcmd_chroot ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc ) {
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
     int i = -1 ;
     const char * const path = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
 
@@ -1874,7 +1874,7 @@ static int objcmd_chroot ( ClientData cd, Tcl_Interp * T,
         return psx_err ( T, errno, "chdir" ) ;
       }
 
-      if ( chroot ( path ) ) {
+      if ( chroot ( "." ) ) {
         return psx_err ( T, errno, "chroot" ) ;
       }
 
@@ -2388,32 +2388,6 @@ static int strcmd_pivot_root ( ClientData cd, Tcl_Interp * T,
 #else
   return TCL_OK ;
 #endif
-}
-
-static int strcmd_swapoff ( ClientData cd, Tcl_Interp * T,
-  const int argc, const char ** argv )
-{
-  if ( 1 < argc ) {
-    int i ;
-    const char * str = NULL ;
-
-    for ( i = 1 ; argc > i ; ++ i ) {
-      str = argv [ i ] ;
-
-      if ( str && * str && swapoff ( str ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T, argv [ 0 ],
-          ": swapoff ", str, " failed: ",
-        Tcl_PosixError ( T ), (char *) NULL ) ;
-        return TCL_ERROR ;
-        break ;
-      }
-    }
-
-    if ( str && * str ) { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
 }
 
 static int strcmd_umount ( ClientData cd, Tcl_Interp * T,
