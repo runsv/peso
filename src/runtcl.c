@@ -1697,28 +1697,25 @@ static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
   if ( 2 < objc ) {
     int s = 0 ;
 
-    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & s ) ) {
-      if ( 0 <= s && NSIG > s ) {
-        int i, p ;
+    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & s ) && 0 <= s && NSIG > s )
+    {
+      int i, p ;
 
-        for ( i = 2 ; objc > i ; ++ i ) {
-          p = 0 ;
-
-          if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & p ) ) {
-            if ( kill ( (pid_t) p, s ) ) {
-              return psx_err ( T, errno, "kill" ) ;
-            }
-          } else {
-            Tcl_AddErrorInfo ( T, "positive integer arg required" ) ;
-            return TCL_ERROR ;
+      for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+        if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & p ) == TCL_OK ) {
+          if ( kill ( (pid_t) p, s ) ) {
+            return psx_err ( T, errno, "kill" ) ;
           }
+        } else {
+          Tcl_AddErrorInfo ( T, "pid (integer) required" ) ;
+          return TCL_ERROR ;
         }
-
-        return TCL_OK ;
       }
+
+      return TCL_OK ;
     }
 
-    Tcl_AddErrorInfo ( T, "illegal signal number" ) ;
+    Tcl_AddErrorInfo ( T, "illegal signal number specified" ) ;
     return TCL_ERROR ;
   }
 
