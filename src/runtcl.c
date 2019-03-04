@@ -19,8 +19,8 @@ objcmds:
   signal default, ignore, error, trap, (g,s)et, (un)block
 
   normal:
-  alarm, execl, chroot, fork, (pg)kill, (sys)link, nice, readdir, sleep,
-  system, sync, times, umask, wait(pid)
+  alarm, execl, (pg)kill, (sys)link, readdir, sleep,
+  system, times, wait(pid)
 
   file:
   ch(grp,mod,own), dup, fcntl, f(un)lock, (f)stat, ftruncate, pipe, select,
@@ -28,7 +28,7 @@ objcmds:
 
   unistd.h :
   mass mknod: mksock, mkfile, mkfifos, mkdev, ...
-  exec*, (v)fork, nice
+  exec*, fork, nice
   access, chdir, alarm
   (l)ch(mod,own), get(u,g,p(p,g),s)id, (g,s)ethost(id,name),
   (g,s)etlogin,
@@ -1699,11 +1699,13 @@ static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
 
     if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & s ) ) {
       if ( 0 <= s && NSIG > s ) {
-        int i, p = 0 ;
+        int i, p ;
 
         for ( i = 2 ; objc > i ; ++ i ) {
-          if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & p ) && 0 < p ) {
-            if ( kill ( p, s ) ) {
+          p = 0 ;
+
+          if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & p ) ) {
+            if ( kill ( (pid_t) p, s ) ) {
               return psx_err ( T, errno, "kill" ) ;
             }
           } else {
@@ -1716,7 +1718,7 @@ static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
       }
     }
 
-    Tcl_AddErrorInfo ( T, "invalid signal number" ) ;
+    Tcl_AddErrorInfo ( T, "illegal signal number" ) ;
     return TCL_ERROR ;
   }
 
@@ -1734,11 +1736,8 @@ static int objcmd_nice ( ClientData cd, Tcl_Interp * T,
       errno = 0 ;
       i = nice ( i ) ;
 
-      if ( 0 != errno && -1 == i ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AddErrorInfo ( T, "nice() failed: " ) ;
-        Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-        return TCL_ERROR ;
+      if ( -1 == i && 0 != errno ) {
+        return psx_err ( T, errno, "nice" ) ;
       }
 
       Tcl_SetIntObj ( Tcl_GetObjResult ( T ), i ) ;
