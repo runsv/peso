@@ -19,11 +19,11 @@ objcmds:
   signal default, ignore, error, trap, (g,s)et, (un)block
 
   normal:
-  alarm, execl, (pg)kill, (sys)link, readdir, sleep,
+  alarm, execl, pgkill, (sym)link, readdir, sleep,
   system, times, wait(pid)
 
   file:
-  ch(grp,mod,own), dup, fcntl, f(un)lock, (f)stat, ftruncate, pipe, select,
+  ch(grp,mod,own), dup, fcntl, f(un)lock, (f)stat, (f)truncate, pipe, select,
   (read,write)_file (read, write)
 
   unistd.h :
@@ -1722,6 +1722,8 @@ static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
   Tcl_WrongNumArgs ( T, 1, objv, "sig pid [pid ...]" ) ;
   return TCL_ERROR ;
 }
+
+/* killpg(2) */
 
 static int objcmd_nice ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
