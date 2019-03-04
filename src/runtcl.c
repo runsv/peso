@@ -28,12 +28,10 @@ objcmds:
 
   unistd.h :
   mass mknod: mksock, mkfile, mkfifos, mkdev, ...
-  exec*, fork, nice
-  access, chdir, alarm
+  exec*, access, alarm
   (l)ch(mod,own), get(u,g,p(p,g),s)id, (g,s)ethost(id,name),
-  (g,s)etlogin,
-  link, pipe, readlink
-  setr(e)s(gu)id, symlink, truncate, ttyname
+  (g,s)etlogin, setr(e)s(gu)id, (sym)link, ttyname
+  pipe, readlink
 
   resources.h :
   (g,s)et(rlimit,priority,rusage)
@@ -159,6 +157,8 @@ static int psx_err ( Tcl_Interp * T, const int en, const char * const msg )
   Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
   return TCL_ERROR ;
 }
+
+/* varg psx_verr() helper function */
 
 static int fs_perm ( Tcl_StatBuf * const stp, mode_t m )
 {
@@ -2718,7 +2718,7 @@ static int strcmd_uname ( ClientData cd, Tcl_Interp * T,
 }
 
 static int objcmd_mkfile ( ClientData cd, Tcl_Interp * T,
-  int objc, Tcl_Obj * const * objv )
+  const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
     int i = 0, j = 0 ;
@@ -2764,7 +2764,7 @@ static int objcmd_mkfile ( ClientData cd, Tcl_Interp * T,
 }
 
 static int objcmd_mknfile ( ClientData cd, Tcl_Interp * T,
-  int objc, Tcl_Obj * const * objv )
+  const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
     int i = 0, j = 0 ;
@@ -2806,7 +2806,7 @@ static int objcmd_mknfile ( ClientData cd, Tcl_Interp * T,
 }
 
 static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * T,
-  int objc, Tcl_Obj * const * objv )
+  const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
     int i = 0, j = 0 ;
@@ -2848,7 +2848,7 @@ static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * T,
 }
 
 static int objcmd_mksock ( ClientData cd, Tcl_Interp * T,
-  int objc, Tcl_Obj * const * objv )
+  const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
     int i = 0, j = 0 ;
@@ -2886,6 +2886,44 @@ static int objcmd_mksock ( ClientData cd, Tcl_Interp * T,
     if ( str && * str ) { return TCL_OK ; }
   }
 
+  return TCL_ERROR ;
+}
+
+/* binding for the truncate(2) syscall */
+static int objcmd_truncate ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc ) {
+    int i, j ;
+    off_t o = 0 ;
+    Tcl_WideInt s = 0 ;
+    const char * path = NULL ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & s ) == TCL_OK && 0 <= s ) {
+      o = (off_t) s ;
+    } else {
+      Tcl_AddErrorInfo ( T, "non negative file size in bytes required" ) ;
+      return TCL_ERROR ;
+    }
+
+    for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( truncate ( path, o ) ) {
+          return psx_err ( T, errno, "truncate" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "file name required" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "size file [file ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -3163,6 +3201,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknfile, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfifo", objcmd_mknfifo, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mksock", objcmd_mksock, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::truncate", objcmd_truncate, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::reboot", objcmd_reboot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::halt", objcmd_halt, NULL, NULL ) ;
