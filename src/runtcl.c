@@ -2138,11 +2138,7 @@ static int objcmd_chroot ( ClientData cd, Tcl_Interp * T,
         return psx_err ( T, errno, "chdir" ) ;
       }
 
-      if ( chroot ( "." ) ) {
-        return psx_err ( T, errno, "chroot" ) ;
-      }
-
-      return TCL_OK ;
+      return res_zero ( T, "chroot", chroot ( "." ) ) ;
     }
 
     Tcl_AddErrorInfo ( T, "non empty path string required" ) ;
