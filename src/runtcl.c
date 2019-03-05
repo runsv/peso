@@ -7,6 +7,7 @@ Look for relevant file + unix functions in the OCaml stdlib.
 
   FS: copy/delete files/dirs
   SysV IPC: msgqueue functions
+  setgroups() mit array aus 64 elementen
   Ensembles fs + ux
 
 strcmds:
