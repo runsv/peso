@@ -5,6 +5,10 @@
 
 Look for relevant file + unix functions in the OCaml stdlib.
 
+  FS: copy/delete files/dirs
+  SysV IPC: msgqueue functions
+  Ensembles fs + ux
+
 strcmds:
   vfork_and_exec
   syslog()
