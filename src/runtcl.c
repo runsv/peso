@@ -1707,14 +1707,41 @@ static int objcmd_setreuid ( ClientData cd, Tcl_Interp * T,
       return TCL_ERROR ;
     }
 
-    if ( setuid ( (uid_t) i ) ) {
-        return psx_err ( T, errno, "setuid" ) ;
+    if ( setreuid ( (uid_t) r, (uid_t) e ) ) {
+      return psx_err ( T, errno, "setreuid" ) ;
     }
 
     return TCL_OK ;
   }
 
   Tcl_WrongNumArgs ( T, 1, objv, "ruid euid" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_setregid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc ) {
+    Tcl_WideInt r = -1, e = -1 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & r ) != TCL_OK || 0 > r ) {
+      Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & e ) != TCL_OK || 0 > e ) {
+      Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( setregid ( (gid_t) r, (gid_t) e ) ) {
+      return psx_err ( T, errno, "setregid" ) ;
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "rgid egid" ) ;
   return TCL_ERROR ;
 }
 
@@ -3318,6 +3345,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::setgid", objcmd_setgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::seteuid", objcmd_seteuid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setegid", objcmd_setegid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setreuid", objcmd_setreuid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setregid", objcmd_setregid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getsid", objcmd_getsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setpgid", objcmd_setpgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setsid", objcmd_setsid, NULL, NULL ) ;
