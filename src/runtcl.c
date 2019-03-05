@@ -363,6 +363,44 @@ static int do_reboot ( Tcl_Interp * T, const int what )
  * bindings for Linux specific syscalls
  */
 
+static int objcmd_setfsuid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    Tcl_WideInt i = -1 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 <= i ) {
+      Tcl_SetIntObj ( setfsuid ( (uid_t) i ) ) ;
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "illegal uid" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "uid" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_setfsgid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    Tcl_WideInt i = -1 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 <= i ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult (), setfsgid ( (gid_t) i ) ) ;
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "gid" ) ;
+  return TCL_ERROR ;
+}
+
 /* reboot the system with the reboot(2) syscall */
 static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
@@ -1567,6 +1605,50 @@ static int objcmd_setpgid ( ClientData cd, Tcl_Interp * T,
   }
 
   return TCL_OK ;
+}
+
+static int objcmd_setuid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    Tcl_WideInt i = -1 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 <= i ) {
+      if ( setuid ( (uid_t) i ) ) {
+        return psx_err ( T, errno, "setuid" ) ;
+      }
+
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "illegal uid" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "uid" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_setgid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    Tcl_WideInt i = -1 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 <= i ) {
+      if ( setgid ( (gid_t) i ) ) {
+        return psx_err ( T, errno, "setgid" ) ;
+      }
+
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "gid" ) ;
+  return TCL_ERROR ;
 }
 
 static int objcmd_setsid ( ClientData cd, Tcl_Interp * T,
@@ -3165,6 +3247,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::getppid", objcmd_getppid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgrp", objcmd_getpgrp, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgid", objcmd_getpgid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setuid", objcmd_setuid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setgid", objcmd_setgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getsid", objcmd_getsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setpgid", objcmd_setpgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setsid", objcmd_setsid, NULL, NULL ) ;
@@ -3213,6 +3297,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
 #endif
 
 #if defined (OSLinux)
+  (void) Tcl_CreateObjCommand ( T, "::ux::setfsuid", objcmd_setfsuid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setfsgid", objcmd_setfsgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::hibernate", objcmd_hibernate, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::kexec", objcmd_kexec, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cad_on", objcmd_cad_on, NULL, NULL ) ;
