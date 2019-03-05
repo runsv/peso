@@ -1731,6 +1731,64 @@ static int objcmd_setregid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+static int objcmd_setresuid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 3 < objc ) {
+    Tcl_WideInt r = -1, e = -1, s = -1 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & r ) != TCL_OK || 0 > r ) {
+      Tcl_AddErrorInfo ( T, "illegal uid" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & e ) != TCL_OK || 0 > e ) {
+      Tcl_AddErrorInfo ( T, "illegal uid" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & s ) != TCL_OK || 0 > s ) {
+      Tcl_AddErrorInfo ( T, "illegal uid" ) ;
+      return TCL_ERROR ;
+    }
+
+    return res_zero ( T, "setresuid",
+      setresuid ( (uid_t) r, (uid_t) e, (uid_t) s ) ) ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "ruid euid suid" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_setresgid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 3 < objc ) {
+    Tcl_WideInt r = -1, e = -1, s = -1 ;
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & r ) != TCL_OK || 0 > r ) {
+      Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & e ) != TCL_OK || 0 > e ) {
+      Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & s ) != TCL_OK || 0 > s ) {
+      Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+      return TCL_ERROR ;
+    }
+
+    return res_zero ( T, "setresgid",
+      setresgid ( (gid_t) r, (gid_t) e, (gid_t) s ) ) ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "rgid egid sgid" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_setsid ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3333,6 +3391,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::setegid", objcmd_setegid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setreuid", objcmd_setreuid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setregid", objcmd_setregid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setresuid", objcmd_setresuid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setresgid", objcmd_setresgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getsid", objcmd_getsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setpgid", objcmd_setpgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setsid", objcmd_setsid, NULL, NULL ) ;
