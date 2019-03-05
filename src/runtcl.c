@@ -1585,39 +1585,22 @@ static int objcmd_getsid ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_setpgid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sethostid ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  int i = 0 ;
-  pid_t p = 0, pg = 0 ;
+  if ( 1 < objc ) {
+    long int i = 0 ;
 
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
-    i = 0 ;
-
-    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
-      Tcl_AddErrorInfo ( T, "invalid pid" ) ;
-      return TCL_ERROR ;
+    if ( Tcl_GetLongFromObj ( T, objv [ 1 ], & i ) == TCL_OK ) {
+      return res_zero ( T, "sethostid", sethostid ( i ) ) ;
     }
 
-    p = (pid_t) i ;
+    Tcl_AddErrorInfo ( T, "illegal host id" ) ;
+    return TCL_ERROR ;
   }
 
-  if ( 2 < objc && NULL != objv [ 2 ] ) {
-    i = 0 ;
-
-    if ( Tcl_GetIntFromObj ( T, objv [ 2 ], & i ) != TCL_OK ) {
-      Tcl_AddErrorInfo ( T, "invalid pid" ) ;
-      return TCL_ERROR ;
-    }
-
-    pg = (pid_t) i ;
-  }
-
-  if ( setpgid ( p, pg ) ) {
-    return psx_err ( T, errno, "setpgid" ) ;
-  }
-
-  return TCL_OK ;
+  Tcl_WrongNumArgs ( T, 1, objv, "id" ) ;
+  return TCL_ERROR ;
 }
 
 static int objcmd_setuid ( ClientData cd, Tcl_Interp * T,
@@ -1794,6 +1777,41 @@ static int objcmd_setresgid ( ClientData cd, Tcl_Interp * T,
 
   Tcl_WrongNumArgs ( T, 1, objv, "rgid egid sgid" ) ;
   return TCL_ERROR ;
+}
+
+static int objcmd_setpgid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i = 0 ;
+  pid_t p = 0, pg = 0 ;
+
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    i = 0 ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "invalid pid" ) ;
+      return TCL_ERROR ;
+    }
+
+    p = (pid_t) i ;
+  }
+
+  if ( 2 < objc && NULL != objv [ 2 ] ) {
+    i = 0 ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 2 ], & i ) != TCL_OK ) {
+      Tcl_AddErrorInfo ( T, "invalid pid" ) ;
+      return TCL_ERROR ;
+    }
+
+    pg = (pid_t) i ;
+  }
+
+  if ( setpgid ( p, pg ) ) {
+    return psx_err ( T, errno, "setpgid" ) ;
+  }
+
+  return TCL_OK ;
 }
 
 static int objcmd_setsid ( ClientData cd, Tcl_Interp * T,
@@ -3393,6 +3411,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::getppid", objcmd_getppid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgrp", objcmd_getpgrp, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgid", objcmd_getpgid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sethostid", objcmd_sethostid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setuid", objcmd_setuid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setgid", objcmd_setgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::seteuid", objcmd_seteuid, NULL, NULL ) ;
