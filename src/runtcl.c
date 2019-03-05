@@ -1477,6 +1477,13 @@ static int objcmd_psyncfs ( ClientData cd, Tcl_Interp * T,
 #endif
 }
 
+static int objcmd_time ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  Tcl_SetLongObj ( Tcl_GetObjResult ( T ), (long int) time ( NULL ) ) ;
+  return TCL_OK ;
+}
+
 static int objcmd_gethostid ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -1908,10 +1915,16 @@ static int objcmd_sysversion ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_time ( ClientData cd, Tcl_Interp * T,
+static int objcmd_gethostname ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  Tcl_SetLongObj ( Tcl_GetObjResult ( T ), (long int) time ( NULL ) ) ;
+  char buf [ 1 + HOST_NAME_MAX ] = { 0 } ;
+
+  if ( gethostname ( buf, sizeof ( buf ) - 1 ) ) {
+    return psx_err ( T, errno, "gethostname" ) ;
+  }
+
+  Tcl_SetStringObj ( Tcl_GetObjResult ( T ), buf, str_len ( buf ) ) ;
   return TCL_OK ;
 }
 
@@ -2178,41 +2191,22 @@ static int objcmd_isatty ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_hostname ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sethostname ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  Tcl_Obj * rp = Tcl_GetObjResult ( T ) ;
-
   if ( 1 < objc ) {
-    /* set hostname */
-    int i = 0 ;
-    const char * name = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+    int i = -1 ;
+    const char * const name = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
 
     if ( ( 0 < i ) && name && * name ) {
-      if ( sethostname ( name, i ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendStringsToObj ( rp,
-          "sethostname failed: ", Tcl_PosixError ( T ), (char *) NULL ) ;
-        return TCL_ERROR ;
-      }
-
-      return TCL_OK ;
-    }
-  } else {
-    /* get hostname */
-    char buf [ 1 + HOST_NAME_MAX ] = { 0 } ;
-
-    if ( gethostname ( buf, sizeof ( buf ) - 1 ) ) {
-      Tcl_SetErrno ( errno ) ;
-      Tcl_AppendStringsToObj ( rp,
-        "gethostname failed: ", Tcl_PosixError ( T ), (char *) NULL ) ;
-      return TCL_ERROR ;
+      return res_zero ( T, "sethostname", sethostname ( name, (size_t) i ) ) ;
     }
 
-    Tcl_SetStringObj ( rp, buf, str_len ( buf ) ) ;
-    return TCL_OK ;
+    Tcl_AddErrorInfo ( T, "illegal hostname" ) ;
+    return TCL_ERROR ;
   }
 
+  Tcl_WrongNumArgs ( T, 1, objv, "name" ) ;
   return TCL_ERROR ;
 }
 
@@ -3398,6 +3392,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::pfdatasync", objcmd_pfdatasync, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause", objcmd_pause, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause_forever", objcmd_pause_forever, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::time", objcmd_time, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::gethostid", objcmd_gethostid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getuid", objcmd_getuid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::geteuid", objcmd_geteuid, NULL, NULL ) ;
@@ -3428,7 +3423,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::osrelease", objcmd_sysrelease, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sysversion", objcmd_sysversion, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::osversion", objcmd_sysversion, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::time", objcmd_time, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::gethostname", objcmd_gethostname, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umask", objcmd_umask, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::kill", objcmd_kill, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nice", objcmd_nice, NULL, NULL ) ;
@@ -3441,7 +3436,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::chdir", objcmd_chdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::chroot", objcmd_chroot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::isatty", objcmd_isatty, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::hostname", objcmd_hostname, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sethostname", objcmd_sethostname, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::chmod", objcmd_chmod, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unlink", objcmd_unlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::rmdir", objcmd_rmdir, NULL, NULL ) ;
