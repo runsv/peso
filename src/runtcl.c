@@ -1477,6 +1477,13 @@ static int objcmd_psyncfs ( ClientData cd, Tcl_Interp * T,
 #endif
 }
 
+static int objcmd_gethostid ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  Tcl_SetLongObj ( Tcl_GetObjResult ( T ), gethostid () ) ;
+  return TCL_OK ;
+}
+
 static int objcmd_getuid ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3377,6 +3384,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::pfdatasync", objcmd_pfdatasync, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause", objcmd_pause, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::pause_forever", objcmd_pause_forever, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::gethostid", objcmd_gethostid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getuid", objcmd_getuid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::geteuid", objcmd_geteuid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getgid", objcmd_getgid, NULL, NULL ) ;
