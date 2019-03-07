@@ -1016,6 +1016,22 @@ static int objcmd_add_double ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
+static int objcmd_texit ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i = 0 ;
+
+  if ( 1 < objc && NULL != objv [ 1 ] &&
+    Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_Exit ( i ) ;
+  return TCL_OK ;
+}
+
 static int objcmd_exit ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -1134,7 +1150,7 @@ static int objcmd_fs_rename ( ClientData cd, Tcl_Interp * T,
       Tcl_FSRenameFile ( objv [ 1 ], objv [ 2 ] ) ) ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, objv, "path path" ) ;
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest" ) ;
   return TCL_ERROR ;
 }
 
@@ -1154,7 +1170,7 @@ static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * T,
     return TCL_OK ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, objv, "file file [file ...]" ) ;
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest [dest ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -3410,6 +3426,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::add_wide", objcmd_add_wide_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::addwide", objcmd_add_wide_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::add_double", objcmd_add_double, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::texit", objcmd_texit, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::tcl_exit", objcmd_texit, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::exit", objcmd_exit, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::uexit", objcmd_uexit, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::_exit", objcmd_uexit, NULL, NULL ) ;
@@ -3517,20 +3535,20 @@ int Tcl_AppInit ( Tcl_Interp * T )
 #endif
 
 #if 0
-  /* create new namespaces for the new commands */
-  nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
-  nsp = Tcl_CreateNamespace ( T, "::ux", NULL, NULL ) ;
-  /* pattern of exported command names */
+  nsp = Tcl_FindNamespace ( T, "::fs", NULL, TCL_GLOBAL_ONLY ) ;
+  /* pattern for exported command names */
+  (void) Tcl_Export ( T, nsp, "[a-z]?*", 0 ) ;
+  (void) Tcl_CreateEnsemble ( T, "::fs", nsp, TCL_ENSEMBLE_PREFIX ) ;
+  nsp = Tcl_FindNamespace ( T, "::ux", NULL, TCL_GLOBAL_ONLY ) ;
+  /* pattern for exported command names */
   (void) Tcl_Export ( T, nsp, "[a-z]?*", 0 ) ;
   /* create command ensembles containing the exported commands */
-  (void) Tcl_CreateEnsemble ( T, "::ux", nsp, TCL_ENSEMBLE_PREFIX ) ;
+  (void) Tcl_CreateEnsemble ( T, "::x", nsp, TCL_ENSEMBLE_PREFIX ) ;
   /* group (process) id related commands together into an ensemble command */
-  (void) Tcl_CreateEnsemble ( T, "::ux::id", nsp, TCL_ENSEMBLE_PREFIX ) ;
+  (void) Tcl_CreateEnsemble ( T, "::x::id", nsp, TCL_ENSEMBLE_PREFIX ) ;
   /* group file test related commands together into an ensemble command */
-  (void) Tcl_CreateEnsemble ( T, "::ux::test", nsp, TCL_ENSEMBLE_PREFIX ) ;
-  (void) Tcl_CreateEnsemble ( T, "::unix", nsp, TCL_ENSEMBLE_PREFIX ) ;
-  (void) Tcl_CreateEnsemble ( T, "::os", nsp, TCL_ENSEMBLE_PREFIX ) ;
-  (void) Tcl_CreateEnsemble ( T, "::sys", nsp, TCL_ENSEMBLE_PREFIX ) ;
+  (void) Tcl_CreateEnsemble ( T, "::x::test", nsp, TCL_ENSEMBLE_PREFIX ) ;
+  (void) Tcl_CreateEnsemble ( T, "::ux", nsp, TCL_ENSEMBLE_PREFIX ) ;
 #endif
 
   (void) Tcl_SetVar ( T, "tcl_rcFileName", "~/.tclrc", TCL_GLOBAL_ONLY ) ;
