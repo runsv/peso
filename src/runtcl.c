@@ -471,8 +471,8 @@ static int objcmd_cad_off ( ClientData cd, Tcl_Interp * T,
  * bindings for FreeBSD specific syscalls
  */
 
-static int powercycle ( Tcl_interp * T, const int objc,
-  Tcl_Obj * const * objv, const int f )
+static int objcmd_powercycle ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
 {
   sync () ;
 
@@ -483,8 +483,8 @@ static int powercycle ( Tcl_interp * T, const int objc,
   return TCL_OK ;
 }
 
-static int reroot ( Tcl_interp * T, const int objc,
-  Tcl_Obj * const * objv, const int f )
+static int objcmd_reroot ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
 {
   sync () ;
 
@@ -3472,6 +3472,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
   (void) Tcl_CreateObjCommand ( T, "::ux::powercycle", objcmd_powercycle, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::reroot", objcmd_reroot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_unmount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::force_unmount", objcmd_force_unmount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::swapon", objcmd_swapon, NULL, NULL ) ;
