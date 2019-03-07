@@ -1113,7 +1113,7 @@ static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * T,
     int i ;
 
     for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
-      if ( Tcl_FSCreateDirectory ( objv [ i ] ) ) {
+      if ( Tcl_FSCreateDirectory ( objv [ i ] ) != TCL_OK ) {
         Tcl_AddErrorInfo ( T, "FSCreateDirectory() failed" ) ;
         return TCL_ERROR ;
       }
@@ -1123,6 +1123,38 @@ static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * T,
   }
 
   Tcl_WrongNumArgs ( T, 1, objv, "dir [dir ...]" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_fs_rename ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+    return res_zero ( T, "FSRenameFile",
+      Tcl_FSRenameFile ( objv [ 1 ], objv [ 2 ] ) ) ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "path path" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc ) {
+    int i ;
+
+    for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_FSCopyFile ( objv [ 1 ], objv [ i ] ) != TCL_OK ) {
+        Tcl_AddErrorInfo ( T, "FSCopyFile() failed" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "file file [file ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -3302,6 +3334,11 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::cd", objcmd_fs_chdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::mkdir", objcmd_fs_mkdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::md", objcmd_fs_mkdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::rename", objcmd_fs_rename, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::move", objcmd_fs_rename, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::mv", objcmd_fs_rename, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::copy_file", objcmd_fs_copy_file, NULL, NULL ) ;
+  //(void) Tcl_CreateObjCommand ( T, "::fs::copy_dir", objcmd_fs_copy_dir, NULL, NULL ) ;
   /* access(2) related */
   (void) Tcl_CreateObjCommand ( T, "::fs::ex", objcmd_fs_acc_ex, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::exists", objcmd_fs_acc_ex, NULL, NULL ) ;
