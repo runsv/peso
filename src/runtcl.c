@@ -1081,21 +1081,6 @@ static int objcmd_pause_forever ( ClientData cd, Tcl_Interp * T,
  * functions using TCLs FS API functions
  */
 
-static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  if ( 1 < objc ) {
-    if ( Tcl_FSChdir ( objv [ 1 ] ) ) {
-      return psx_err ( T, errno, "chdir" ) ;
-    }
-
-    return TCL_OK ;
-  }
-
-  Tcl_WrongNumArgs ( T, 1, objv, "dir" ) ;
-  return TCL_ERROR ;
-}
-
 static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -1106,6 +1091,38 @@ static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * T,
     return TCL_OK ;
   }
 
+  Tcl_AddErrorInfo ( T, "FSGetCwd() failed" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    return res_zero ( T, "FSChdir", Tcl_FSChdir ( objv [ 1 ] ) ) ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dir" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_FSCreateDirectory ( objv [ i ] ) ) {
+        Tcl_AddErrorInfo ( T, "FSCreateDirectory() failed" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dir [dir ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -3267,7 +3284,7 @@ static int strcmd_mount ( ClientData cd, Tcl_Interp * T,
  * signal handling functions
  */
 
-/* reset given or all signals to defaults */
+/* reset given or all signals to their default actions */
 
 /* tclsh application init function */
 int Tcl_AppInit ( Tcl_Interp * T )
@@ -3278,15 +3295,13 @@ int Tcl_AppInit ( Tcl_Interp * T )
 
   if ( NULL == T ) { return TCL_ERROR ; }
 
-  /* create a new namespace for the new commands */
-  /*
-  nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
-  */
-
-  /* add new object commands to it */
-  (void) Tcl_CreateObjCommand ( T, "::fs::chdir", objcmd_fs_chdir, NULL, NULL ) ;
+  /* add new FS object commands */
   (void) Tcl_CreateObjCommand ( T, "::fs::getcwd", objcmd_fs_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::cwd", objcmd_fs_getcwd, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::chdir", objcmd_fs_chdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::cd", objcmd_fs_chdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::mkdir", objcmd_fs_mkdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::md", objcmd_fs_mkdir, NULL, NULL ) ;
   /* access(2) related */
   (void) Tcl_CreateObjCommand ( T, "::fs::ex", objcmd_fs_acc_ex, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::exists", objcmd_fs_acc_ex, NULL, NULL ) ;
@@ -3317,11 +3332,6 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::is_h", objcmd_fs_is_L, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnr", objcmd_fs_is_fnr, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnrx", objcmd_fs_is_fnrx, NULL, NULL ) ;
-
-  /* create namespace for new commands */
-  /*
-  nsp = Tcl_CreateNamespace ( T, "::ux", NULL, NULL ) ;
-  */
 
   /* add new string commands */
   (void) Tcl_CreateCommand ( T, "::ux::system", strcmd_system, NULL, NULL ) ;
@@ -3470,6 +3480,9 @@ int Tcl_AppInit ( Tcl_Interp * T )
 #endif
 
 #if 0
+  /* create new namespaces for the new commands */
+  nsp = Tcl_CreateNamespace ( T, "::fs", NULL, NULL ) ;
+  nsp = Tcl_CreateNamespace ( T, "::ux", NULL, NULL ) ;
   /* pattern of exported command names */
   (void) Tcl_Export ( T, nsp, "[a-z]?*", 0 ) ;
   /* create command ensembles containing the exported commands */
