@@ -8,6 +8,8 @@ Look for relevant file + unix functions in the OCaml stdlib.
   FS: copy/delete files/dirs
   SysV IPC: msgqueue functions
   setgroups() mit array aus 64 elementen
+  Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...},
+    zusammenfassen in mount_pseudofs()
   Ensembles fs + ux
 
 strcmds:
@@ -367,10 +369,6 @@ static int do_reboot ( Tcl_Interp * T, const int what )
 #if defined (OSLinux)
 
 /*
- * helper functions that operate on bitmask flags of Linux specific syscalls
- */
-
-/*
  * bindings for Linux specific syscalls
  */
 
@@ -470,19 +468,6 @@ static int objcmd_cad_off ( ClientData cd, Tcl_Interp * T,
 #elif defined (OSfreebsd)
 
 /*
- * helper functions that operate on bitmask flags of FreeBSD specific syscalls
- */
-
-/* bitwise ored flags for the mount(2) syscall */
-static int objcmd_bit_or_flags_mount ( ClientData cd, Tcl_Interp * T,
-  const int objc, Tcl_Obj * const * objv )
-{
-  int i, f = 0 ;
-  Tcl_SetIntObj ( Tcl_GetObjResult ( T ), f ) ;
-  return TCL_OK ;
-}
-
-/*
  * bindings for FreeBSD specific syscalls
  */
 
@@ -492,6 +477,18 @@ static int powercycle ( Tcl_interp * T, const int objc,
   sync () ;
 
   if ( reboot ( RB_HALT | RB_POWERCYCLE ) ) {
+    return psx_err ( T, errno, "reboot" ) ;
+  }
+
+  return TCL_OK ;
+}
+
+static int reroot ( Tcl_interp * T, const int objc,
+  Tcl_Obj * const * objv, const int f )
+{
+  sync () ;
+
+  if ( reboot ( RB_REROOT ) ) {
     return psx_err ( T, errno, "reboot" ) ;
   }
 
