@@ -354,16 +354,11 @@ static int do_reboot ( Tcl_Interp * T, const int what )
 {
   sync () ;
 
-  if ( reboot ( what
-#if defined (OSsolaris) || defined (OSnetbsd)
+  return res_zero ( T, "reboot", reboot ( what
+#if defined (OSsolaris) || defined (OSsunos5) || defined (OSnetbsd)
       , NULL
 #endif
-    ) )
-  {
-    return psx_err ( T, errno, "reboot" ) ;
-  }
-
-  return TCL_OK ;
+    ) ) ;
 }
 
 #if defined (OSLinux)
@@ -474,25 +469,13 @@ static int objcmd_cad_off ( ClientData cd, Tcl_Interp * T,
 static int objcmd_powercycle ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  sync () ;
-
-  if ( reboot ( RB_HALT | RB_POWERCYCLE ) ) {
-    return psx_err ( T, errno, "reboot" ) ;
-  }
-
-  return TCL_OK ;
+  return do_reboot ( T, RB_HALT | RB_POWERCYCLE ) ;
 }
 
 static int objcmd_reroot ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  sync () ;
-
-  if ( reboot ( RB_REROOT ) ) {
-    return psx_err ( T, errno, "reboot" ) ;
-  }
-
-  return TCL_OK ;
+  return do_reboot ( T, RB_REROOT ) ;
 }
 
 /* helper function that does the real work for the unmount(2) bindings */
