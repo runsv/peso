@@ -2079,6 +2079,59 @@ static int objcmd_sysversion ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
+static int objcmd_uname ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  struct utsname uts ;
+
+  if ( uname ( & uts ) ) {
+    return psx_err ( T, errno, "uname" ) ;
+  }
+
+  if ( Tcl_DictObjPut ( T, Tcl_GetObjResult ( T ),
+    Tcl_NewStringObj ( "hostname", -1 ),
+    Tcl_NewStringObj ( uts . nodename, -1 ) ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "failed to create new dict object" ) ;
+    return TCL_ERROR ;
+  }
+
+  if ( Tcl_DictObjPut ( T, Tcl_GetObjResult ( T ),
+    Tcl_NewStringObj ( "arch", -1 ),
+    Tcl_NewStringObj ( uts . machine, -1 ) ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "failed to create new dict entry" ) ;
+    return TCL_ERROR ;
+  }
+
+  if ( Tcl_DictObjPut ( T, Tcl_GetObjResult ( T ),
+    Tcl_NewStringObj ( "osname", -1 ),
+    Tcl_NewStringObj ( uts . sysname, -1 ) ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "failed to create new dict entry" ) ;
+    return TCL_ERROR ;
+  }
+
+  if ( Tcl_DictObjPut ( T, Tcl_GetObjResult ( T ),
+    Tcl_NewStringObj ( "release", -1 ),
+    Tcl_NewStringObj ( uts . release, -1 ) ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "failed to create new dict entry" ) ;
+    return TCL_ERROR ;
+  }
+
+  if ( Tcl_DictObjPut ( T, Tcl_GetObjResult ( T ),
+    Tcl_NewStringObj ( "version", -1 ),
+    Tcl_NewStringObj ( uts . version, -1 ) ) != TCL_OK )
+  {
+    Tcl_AddErrorInfo ( T, "failed to create new dict entry" ) ;
+    return TCL_ERROR ;
+  }
+
+  /* FIXME: add domainname struct component for _GNU_SOURCE */
+  return TCL_OK ;
+}
+
 static int objcmd_gethostname ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3545,7 +3598,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateCommand ( T, "::ux::symlink", strcmd_symlink, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::uname", strcmd_uname, NULL, NULL ) ;
+  (void) Tcl_CreateCommand ( T, "::ux::suname", strcmd_uname, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
@@ -3618,6 +3671,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::osrelease", objcmd_sysrelease, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sysversion", objcmd_sysversion, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::osversion", objcmd_sysversion, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::uname", objcmd_uname, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::gethostname", objcmd_gethostname, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umask", objcmd_umask, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::kill", objcmd_kill, NULL, NULL ) ;
