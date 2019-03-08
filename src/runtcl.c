@@ -1194,6 +1194,28 @@ static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+static int objcmd_fs_copy_dir ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc ) {
+    int i ;
+    Tcl_Obj * o = NULL ;
+
+    for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_FSCopyDirectory ( objv [ 1 ], objv [ i ], & o ) != TCL_OK ) {
+        Tcl_AddErrorInfo ( T, "FSCopyDirectory() failed for " ) ;
+        Tcl_AppendObjToErrorInfo ( T, o ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest [dest ...]" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_fs_readlink ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -2130,13 +2152,32 @@ static int objcmd_nice ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+static int objcmd_msleep ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    int i = -1 ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 < i ) {
+      Tcl_Sleep ( i ) ;
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "positive integer arg required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "msecs" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_sleep ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc ) {
-    int i = 0 ;
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    int i = -1 ;
 
-    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) && 0 < i ) {
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 < i ) {
       unsigned int s = (unsigned int) i ;
 
       while ( 0 < s ) { s = sleep ( s ) ; }
@@ -3427,7 +3468,12 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::move", objcmd_fs_rename, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::mv", objcmd_fs_rename, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::copy_file", objcmd_fs_copy_file, NULL, NULL ) ;
-  //(void) Tcl_CreateObjCommand ( T, "::fs::copy_dir", objcmd_fs_copy_dir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::copy", objcmd_fs_copy_file, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::cp", objcmd_fs_copy_file, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::copy_dir", objcmd_fs_copy_dir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::rcopy", objcmd_fs_copy_dir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::copy_r", objcmd_fs_copy_dir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::cp_r", objcmd_fs_copy_dir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::readlink", objcmd_fs_readlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::link", objcmd_fs_link, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::symlink", objcmd_fs_symlink, NULL, NULL ) ;
@@ -3553,6 +3599,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::ux::umask", objcmd_umask, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::kill", objcmd_kill, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nice", objcmd_nice, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::msleep", objcmd_msleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sleep", objcmd_sleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nanosleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nsleep", objcmd_nanosleep, NULL, NULL ) ;
