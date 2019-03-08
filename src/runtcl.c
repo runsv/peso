@@ -8,8 +8,7 @@ Look for relevant file + unix functions in the OCaml stdlib.
   FS: copy/delete files/dirs
   SysV IPC: msgqueue functions
   setgroups() mit array aus 64 elementen
-  Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...},
-    zusammenfassen in mount_pseudofs()
+  Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...}
   Ensembles fs + x
 
 strcmds:
