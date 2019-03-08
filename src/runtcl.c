@@ -1122,6 +1122,26 @@ static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+static int objcmd_fs_remove ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_FSDeleteFile ( objv [ i ] ) != TCL_OK ) {
+        Tcl_AddErrorInfo ( T, "FSDeleteFile() failed" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "file [file ...]" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3399,6 +3419,8 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::cwd", objcmd_fs_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::chdir", objcmd_fs_chdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::cd", objcmd_fs_chdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::remove", objcmd_fs_remove, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::rm", objcmd_fs_remove, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::mkdir", objcmd_fs_mkdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::md", objcmd_fs_mkdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::rename", objcmd_fs_rename, NULL, NULL ) ;
