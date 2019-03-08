@@ -10,7 +10,7 @@ Look for relevant file + unix functions in the OCaml stdlib.
   setgroups() mit array aus 64 elementen
   Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...},
     zusammenfassen in mount_pseudofs()
-  Ensembles fs + ux
+  Ensembles fs + x
 
 strcmds:
   vfork_and_exec
@@ -1151,6 +1151,28 @@ static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * T,
     for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
       if ( Tcl_FSCreateDirectory ( objv [ i ] ) != TCL_OK ) {
         Tcl_AddErrorInfo ( T, "FSCreateDirectory() failed" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dir [dir ...]" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_fs_rmdir ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i ;
+    Tcl_Obj * o = NULL ;
+
+    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_FSRemoveDirectory ( objv [ i ], 1, & o ) != TCL_OK ) {
+        Tcl_AddErrorInfo ( T, "FSCreateDirectory() failed for " ) ;
+        Tcl_AppendObjToErrorInfo ( T, o ) ;
         return TCL_ERROR ;
       }
     }
@@ -3453,8 +3475,6 @@ int Tcl_AppInit ( Tcl_Interp * T )
   Tcl_Namespace * nsp = NULL ;
   */
 
-  if ( NULL == T ) { return TCL_ERROR ; }
-
   /* add new FS object commands */
   (void) Tcl_CreateObjCommand ( T, "::fs::getcwd", objcmd_fs_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::cwd", objcmd_fs_getcwd, NULL, NULL ) ;
@@ -3464,6 +3484,9 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::rm", objcmd_fs_remove, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::mkdir", objcmd_fs_mkdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::md", objcmd_fs_mkdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::rmdir", objcmd_fs_rmdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::rmrec", objcmd_fs_rmdir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::rm_r", objcmd_fs_rmdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::rename", objcmd_fs_rename, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::move", objcmd_fs_rename, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::mv", objcmd_fs_rename, NULL, NULL ) ;
@@ -3471,6 +3494,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::copy", objcmd_fs_copy_file, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::cp", objcmd_fs_copy_file, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::copy_dir", objcmd_fs_copy_dir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::copyrec", objcmd_fs_copy_dir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::rcopy", objcmd_fs_copy_dir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::copy_r", objcmd_fs_copy_dir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::cp_r", objcmd_fs_copy_dir, NULL, NULL ) ;
