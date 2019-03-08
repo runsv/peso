@@ -1174,6 +1174,57 @@ static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
+static int objcmd_fs_readlink ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc && NULL != objv [ 1 ] ) {
+    Tcl_Obj * const rp = Tcl_FSLink ( objv [ 1 ], NULL, 0 ) ;
+
+    if ( rp ) {
+      Tcl_SetObjResult ( T, rp ) ;
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "FSLink() failed" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "link" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_fs_link ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+    if ( Tcl_FSLink ( objv [ 1 ], objv [ 2 ], TCL_CREATE_HARD_LINK ) ) {
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "FSLink() failed" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_fs_symlink ( ClientData cd, Tcl_Interp * T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+    if ( Tcl_FSLink ( objv [ 1 ], objv [ 2 ], TCL_CREATE_SYMBOLIC_LINK ) ) {
+      return TCL_OK ;
+    }
+
+    Tcl_AddErrorInfo ( T, "FSLink() failed" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_fs_acc_ex ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3355,6 +3406,9 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateObjCommand ( T, "::fs::mv", objcmd_fs_rename, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::copy_file", objcmd_fs_copy_file, NULL, NULL ) ;
   //(void) Tcl_CreateObjCommand ( T, "::fs::copy_dir", objcmd_fs_copy_dir, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::readlink", objcmd_fs_readlink, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::link", objcmd_fs_link, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::symlink", objcmd_fs_symlink, NULL, NULL ) ;
   /* access(2) related */
   (void) Tcl_CreateObjCommand ( T, "::fs::ex", objcmd_fs_acc_ex, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::exists", objcmd_fs_acc_ex, NULL, NULL ) ;
