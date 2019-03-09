@@ -151,7 +151,7 @@ static int close_fd ( const int fd )
 }
 
 /* helper function to propagate a posix error back to the calling Tcl code */
-static int psx_err ( Tcl_Interp * T, const int en, const char * const msg )
+static int psx_err ( Tcl_Interp * const T, const int en, const char * const msg )
 {
   Tcl_SetErrno ( en ) ;
   Tcl_AddErrorInfo ( T, msg ) ;
@@ -162,7 +162,7 @@ static int psx_err ( Tcl_Interp * T, const int en, const char * const msg )
 
 /* varg psx_verr() helper function */
 
-static int res_zero ( Tcl_Interp * T, const char * const msg, const int res )
+static int res_zero ( Tcl_Interp * const T, const char * const msg, const int res )
 {
   if ( res ) {
     const int e = errno ;
@@ -227,7 +227,7 @@ static int fs_dostat ( Tcl_Obj * const optr,
   return 0 ;
 }
 
-static int fs_test ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
+static int fs_test ( Tcl_Interp * const T, const int objc, Tcl_Obj * const * objv,
   const unsigned long int f, const mode_t mode )
 {
   if ( 1 < objc ) {
@@ -250,7 +250,7 @@ static int fs_test ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
-static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
+static int fs_acc ( Tcl_Interp * const T, const int objc, Tcl_Obj * const * objv,
   const int mode )
 {
   if ( 1 < objc ) {
@@ -273,7 +273,7 @@ static int fs_acc ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
-static int sync_file ( Tcl_Interp * T, const char * const path,
+static int sync_file ( Tcl_Interp * const T, const char * const path,
   const unsigned int what )
 {
   int i = 0 ;
@@ -321,7 +321,7 @@ static int sync_file ( Tcl_Interp * T, const char * const path,
   return TCL_OK ;
 }
 
-static int mpsync ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
+static int mpsync ( Tcl_Interp * const T, const int objc, Tcl_Obj * const * objv,
   const unsigned int what )
 {
   if ( 1 < objc ) {
@@ -349,7 +349,7 @@ static int mpsync ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
   return TCL_ERROR ;
 }
 
-static int do_reboot ( Tcl_Interp * T, const int what )
+static int do_reboot ( Tcl_Interp * const T, const int what )
 {
   sync () ;
 
@@ -366,7 +366,7 @@ static int do_reboot ( Tcl_Interp * T, const int what )
  * bindings for Linux specific syscalls
  */
 
-static int objcmd_setfsuid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setfsuid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -385,7 +385,7 @@ static int objcmd_setfsuid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setfsgid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setfsgid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -405,49 +405,49 @@ static int objcmd_setfsgid ( ClientData cd, Tcl_Interp * T,
 }
 
 /* reboot the system with the reboot(2) syscall */
-static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
+static int objcmd_reboot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_AUTOBOOT ) ;
 }
 
 /* halt the system with the reboot(2) syscall */
-static int objcmd_halt ( ClientData cd, Tcl_Interp * T,
+static int objcmd_halt ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_HALT_SYSTEM ) ;
 }
 
 /* power down the system with the reboot(2) syscall */
-static int objcmd_poweroff ( ClientData cd, Tcl_Interp * T,
+static int objcmd_poweroff ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_POWER_OFF ) ;
 }
 
 /* hibernate (suspend to disk) the system with the reboot(2) syscall */
-static int objcmd_hibernate ( ClientData cd, Tcl_Interp * T,
+static int objcmd_hibernate ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_SW_SUSPEND ) ;
 }
 
 /* execute new loaded kernel with the reboot(2) syscall */
-static int objcmd_kexec ( ClientData cd, Tcl_Interp * T,
+static int objcmd_kexec ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_KEXEC ) ;
 }
 
 /* enable the secure attention key sequence with the reboot(2) syscall */
-static int objcmd_cad_on ( ClientData cd, Tcl_Interp * T,
+static int objcmd_cad_on ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_ENABLE_CAD ) ;
 }
 
 /* disable the secure attention key sequence with the reboot(2) syscall */
-static int objcmd_cad_off ( ClientData cd, Tcl_Interp * T,
+static int objcmd_cad_off ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_ENABLE_CAD ) ;
@@ -465,20 +465,20 @@ static int objcmd_cad_off ( ClientData cd, Tcl_Interp * T,
  * bindings for FreeBSD specific syscalls
  */
 
-static int objcmd_powercycle ( ClientData cd, Tcl_Interp * T,
+static int objcmd_powercycle ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_HALT | RB_POWERCYCLE ) ;
 }
 
-static int objcmd_reroot ( ClientData cd, Tcl_Interp * T,
+static int objcmd_reroot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_REROOT ) ;
 }
 
 /* helper function that does the real work for the unmount(2) bindings */
-static int do_unmount ( Tcl_interp * T, const int objc,
+static int do_unmount ( Tcl_interp * const T, const int objc,
   Tcl_Obj * const * objv, const int f )
 {
   if ( 1 < objc ) {
@@ -507,20 +507,20 @@ static int do_unmount ( Tcl_interp * T, const int objc,
 }
 
 /* bindings for the unmount(2) syscall */
-static int objcmd_unmount ( ClientData cd, Tcl_Interp * T,
+static int objcmd_unmount ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_unmount ( T, objc, objv, 0 ) ;
 }
 
-static int objcmd_force_unmount ( ClientData cd, Tcl_Interp * T,
+static int objcmd_force_unmount ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_unmount ( T, objc, objv, MNT_FORCE ) ;
 }
 
 /* binding for the swapon(2) syscall */
-static int objcmd_swapon ( ClientData cd, Tcl_Interp * T,
+static int objcmd_swapon ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -559,7 +559,7 @@ static int objcmd_swapon ( ClientData cd, Tcl_Interp * T,
  */
 
 /* binding for arc4random(3) */
-static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
+static int objcmd_pledge ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   /* arc4random returns an uint32 value */
@@ -568,7 +568,7 @@ static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
 }
 
 /* binding for the pledge(2) syscall */
-static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
+static int objcmd_pledge ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -591,7 +591,7 @@ static int objcmd_pledge ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_unveil ( ClientData cd, Tcl_Interp * T,
+static int objcmd_unveil ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   const char * path = ( 1 < objc ) ? Tcl_GetStringFromObj ( objv [ 1 ], NULL ) : NULL ;
@@ -604,7 +604,7 @@ static int objcmd_unveil ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * T,
+static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( unveil ( NULL, NULL ) ) {
@@ -623,7 +623,7 @@ static int objcmd_last_unveil ( ClientData cd, Tcl_Interp * T,
  * bindings for Solaris/SunOS 5 specific syscalls
  */
 
-static int run_uadmin ( Tcl_Interp * T, const int cmd, const int fcn )
+static int run_uadmin ( Tcl_Interp * const T, const int cmd, const int fcn )
 {
   sync () ;
 
@@ -635,42 +635,42 @@ static int run_uadmin ( Tcl_Interp * T, const int cmd, const int fcn )
 }
 
 /* halt the system with the uadmin(2) syscall */
-static int objcmd_halt ( ClientData cd, Tcl_Interp * T,
+static int objcmd_halt ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return run_uadmin ( T, A_SHUTDOWN, AD_HALT ) ;
 }
 
 /* power down the system with the uadmin(2) syscall */
-static int objcmd_poweroff ( ClientData cd, Tcl_Interp * T,
+static int objcmd_poweroff ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return run_uadmin ( T, A_SHUTDOWN, AD_POWEROFF ) ;
 }
 
 /* reboot the system with the uadmin(2) syscall */
-static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
+static int objcmd_reboot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return run_uadmin ( T, A_SHUTDOWN, AD_BOOT ) ;
 }
 
 /* reboot the system interactively with the uadmin(2) syscall */
-static int objcmd_reboot ( ClientData cd, Tcl_Interp * T,
+static int objcmd_reboot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return run_uadmin ( T, A_SHUTDOWN, AD_IBOOT ) ;
 }
 
 /* reboot the system fast with the uadmin(2) syscall */
-static int objcmd_fast_reboot ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fast_reboot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return run_uadmin ( T, A_SHUTDOWN, AD_FASTREBOOT ) ;
 }
 
 /* reboot the system with the reboot(3C) syscall */
-static int objcmd_sys_reboot ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sys_reboot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return do_reboot ( T, RB_AUTOBOOT ) ;
@@ -679,7 +679,7 @@ static int objcmd_sys_reboot ( ClientData cd, Tcl_Interp * T,
 /* signal all processes that are not in our own session with the
  * sigsendset(3C) syscall
  */
-static int objcmd_kill_all ( ClientData cd, Tcl_Interp * T,
+static int objcmd_kill_all ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i = SIGTERM ;
@@ -716,7 +716,7 @@ static int objcmd_kill_all ( ClientData cd, Tcl_Interp * T,
  */
 
 /* wait for a given (by its PID) process to terminate */
-static int wait4pid ( Tcl_Interp * T, const char nohang, const pid_t pid )
+static int wait4pid ( Tcl_Interp * const T, const char nohang, const pid_t pid )
 {
   if ( 0 < pid ) {
     int i, r = 0 ;
@@ -746,7 +746,7 @@ static int wait4pid ( Tcl_Interp * T, const char nohang, const pid_t pid )
 }
 
 /* exec into executable */
-static int execit ( Tcl_Interp * T, const int f, char ** av )
+static int execit ( Tcl_Interp * const T, const int f, char ** av )
 {
   if ( av && av [ 1 ] && av [ 1 ] [ 0 ] ) {
     if ( ( EXEC_PATH & f ) && ( EXEC_ARGV0 & f ) ) {
@@ -770,7 +770,7 @@ static int execit ( Tcl_Interp * T, const int f, char ** av )
 }
 
 /* spawn a subprocesses */
-static int spawn ( Tcl_Interp * T, const int f, const int argc, char ** argv )
+static int spawn ( Tcl_Interp * const T, const int f, const int argc, char ** argv )
 {
   if ( ( 1 < argc ) && argv && argv [ 1 ] && argv [ 1 ][ 0 ] ) {
   const pid_t p = ( EXEC_VFORK & f ) ? vfork () : fork () ;
@@ -790,7 +790,7 @@ static int spawn ( Tcl_Interp * T, const int f, const int argc, char ** argv )
   return TCL_ERROR ;
 }
 
-static int strcmd_system ( ClientData cd, Tcl_Interp * T,
+static int strcmd_system ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( ( 1 < argc ) && argv && argv [ 1 ] && argv [ 1 ][ 0 ] ) {
@@ -812,7 +812,7 @@ static int strcmd_system ( ClientData cd, Tcl_Interp * T,
 }
 
 /* report the current value of the errno global error indicator variable */
-static int objcmd_get_errno ( ClientData cd, Tcl_Interp * T,
+static int objcmd_get_errno ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   const int e = errno ;
@@ -821,7 +821,7 @@ static int objcmd_get_errno ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that bitwise negates the given integer arg */
-static int objcmd_bit_neg_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_bit_neg_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -841,7 +841,7 @@ static int objcmd_bit_neg_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that bitwise negates the given long integer arg */
-static int objcmd_bit_neg_long_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_bit_neg_long_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -861,7 +861,7 @@ static int objcmd_bit_neg_long_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that bitwise negates the given wide integer arg */
-static int objcmd_bit_neg_wide_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_bit_neg_wide_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -881,7 +881,7 @@ static int objcmd_bit_neg_wide_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that just bitwise ANDs all given integer args */
-static int objcmd_bit_and_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_bit_and_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -905,7 +905,7 @@ static int objcmd_bit_and_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that just bitwise ANDs all given integer args */
-static int objcmd_bit_or_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_bit_or_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -929,7 +929,7 @@ static int objcmd_bit_or_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that just adds all given integer args */
-static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_add_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i, j, r = 0 ;
@@ -950,7 +950,7 @@ static int objcmd_add_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that just adds all given long integer args */
-static int objcmd_add_long_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_add_long_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i ;
@@ -972,7 +972,7 @@ static int objcmd_add_long_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that just adds all given wide integer args */
-static int objcmd_add_wide_int ( ClientData cd, Tcl_Interp * T,
+static int objcmd_add_wide_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i ;
@@ -994,7 +994,7 @@ static int objcmd_add_wide_int ( ClientData cd, Tcl_Interp * T,
 }
 
 /* simple obj command that just adds all given double floating point number */
-static int objcmd_add_double ( ClientData cd, Tcl_Interp * T,
+static int objcmd_add_double ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i ;
@@ -1015,7 +1015,7 @@ static int objcmd_add_double ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_texit ( ClientData cd, Tcl_Interp * T,
+static int objcmd_texit ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i = 0 ;
@@ -1031,7 +1031,7 @@ static int objcmd_texit ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_exit ( ClientData cd, Tcl_Interp * T,
+static int objcmd_exit ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i = 0 ;
@@ -1047,7 +1047,7 @@ static int objcmd_exit ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_uexit ( ClientData cd, Tcl_Interp * T,
+static int objcmd_uexit ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i = 0 ;
@@ -1075,14 +1075,14 @@ static void sighand ( const int sig )
   got_sig = sig ;
 }
 
-static int objcmd_pause ( ClientData cd, Tcl_Interp * T,
+static int objcmd_pause ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   (void) pause () ;
   return TCL_OK ;
 }
 
-static int objcmd_pause_forever ( ClientData cd, Tcl_Interp * T,
+static int objcmd_pause_forever ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   while ( 1 ) {
@@ -1096,7 +1096,7 @@ static int objcmd_pause_forever ( ClientData cd, Tcl_Interp * T,
  * functions using TCLs FS API functions
  */
 
-static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_Obj * cwd = Tcl_FSGetCwd ( T ) ;
@@ -1110,7 +1110,7 @@ static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -1121,7 +1121,7 @@ static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_remove ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_remove ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1141,7 +1141,7 @@ static int objcmd_fs_remove ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1161,7 +1161,7 @@ static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_rmdir ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_rmdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1183,7 +1183,7 @@ static int objcmd_fs_rmdir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_rename ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_rename ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
@@ -1195,7 +1195,7 @@ static int objcmd_fs_rename ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -1215,7 +1215,7 @@ static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_copy_dir ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_copy_dir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -1237,7 +1237,7 @@ static int objcmd_fs_copy_dir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_readlink ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_readlink ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -1256,7 +1256,7 @@ static int objcmd_fs_readlink ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_link ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_link ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
@@ -1272,7 +1272,7 @@ static int objcmd_fs_link ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_symlink ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_symlink ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
@@ -1288,127 +1288,127 @@ static int objcmd_fs_symlink ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_fs_acc_ex ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_ex ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, F_OK ) ;
 }
 
-static int objcmd_fs_acc_r ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_r ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, R_OK ) ;
 }
 
-static int objcmd_fs_acc_w ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_w ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, W_OK ) ;
 }
 
-static int objcmd_fs_acc_x ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_x ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, X_OK ) ;
 }
 
-static int objcmd_fs_acc_rw ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_rw ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, R_OK | W_OK ) ;
 }
 
-static int objcmd_fs_acc_rx ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_rx ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, R_OK | X_OK ) ;
 }
 
-static int objcmd_fs_acc_wx ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_wx ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, W_OK | X_OK ) ;
 }
 
-static int objcmd_fs_acc_rwx ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_acc_rwx ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_acc ( T, objc, objv, R_OK | W_OK | X_OK ) ;
 }
 
-static int objcmd_fs_is_f ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_f ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IFREG ) ;
 }
 
-static int objcmd_fs_is_d ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_d ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IFDIR ) ;
 }
 
-static int objcmd_fs_is_p ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_p ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IFIFO ) ;
 }
 
-static int objcmd_fs_is_s ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_s ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IFSOCK ) ;
 }
 
-static int objcmd_fs_is_c ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_c ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IFCHR ) ;
 }
 
-static int objcmd_fs_is_b ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_b ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IFBLK ) ;
 }
 
-static int objcmd_fs_is_u ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_u ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_ISUID ) ;
 }
 
-static int objcmd_fs_is_g ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_g ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_ISGID ) ;
 }
 
-static int objcmd_fs_is_t ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_t ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_ISVTX ) ;
 }
 
-static int objcmd_fs_is_r ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_r ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IROTH ) ;
 }
 
-static int objcmd_fs_is_w ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_w ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IWOTH ) ;
 }
 
-static int objcmd_fs_is_x ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_x ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, 0, S_IXOTH ) ;
 }
 
-static int objcmd_fs_is_L ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_L ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, FTEST_NOFOLLOW, S_IFLNK ) ;
@@ -1417,13 +1417,13 @@ static int objcmd_fs_is_L ( ClientData cd, Tcl_Interp * T,
 /* see if a given config file exists, is not empty,
  * and has the right access rights
  */
-static int objcmd_fs_is_fnr ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_fnr ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, FTEST_NONZERO, S_IFREG | S_IROTH ) ;
 }
 
-static int objcmd_fs_is_fnrx ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fs_is_fnrx ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return fs_test ( T, objc, objv, FTEST_NONZERO, S_IFREG | S_IROTH | S_IXOTH ) ;
@@ -1438,7 +1438,7 @@ static int objcmd_fs_is_fnrx ( ClientData cd, Tcl_Interp * T,
  */
 
 /* wrapper for the close(2) syscall */
-static int objcmd_close ( ClientData cd, Tcl_Interp * T,
+static int objcmd_close ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1466,7 +1466,7 @@ static int objcmd_close ( ClientData cd, Tcl_Interp * T,
 }
 
 /* flush (the buffers of) all open stdio (output) streams */
-static int objcmd_fflush_all ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fflush_all ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   (void) fflush ( NULL ) ;
@@ -1474,7 +1474,7 @@ static int objcmd_fflush_all ( ClientData cd, Tcl_Interp * T,
 }
 
 /* write(2) to a given fd */
-static int objcmd_write ( ClientData cd, Tcl_Interp * T,
+static int objcmd_write ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -1517,7 +1517,7 @@ static int objcmd_write ( ClientData cd, Tcl_Interp * T,
  */
 
 /* helper function that syncs the open file corresponding to a given fd */
-static int sync_fd ( Tcl_Interp * T, const int fd, const unsigned int what )
+static int sync_fd ( Tcl_Interp * const T, const int fd, const unsigned int what )
 {
   switch ( what ) {
     case FSYNC_FDATASYNC :
@@ -1539,7 +1539,7 @@ static int sync_fd ( Tcl_Interp * T, const int fd, const unsigned int what )
   return TCL_OK ;
 }
 
-static int sync_fds ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
+static int sync_fds ( Tcl_Interp * const T, const int objc, Tcl_Obj * const * objv,
   const unsigned int what )
 {
   if ( 1 < objc ) {
@@ -1566,14 +1566,14 @@ static int sync_fds ( Tcl_Interp * T, const int objc, Tcl_Obj * const * objv,
 }
 
 /* fsync(2) the open files corresonding to the given fds */
-static int objcmd_fsync ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fsync ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return sync_fds ( T, objc, objv, FSYNC_FSYNC ) ;
 }
 
 /* fdatasync(2) the open files corresonding to the given fds */
-static int objcmd_fdatasync ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fdatasync ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
 #if defined (_POSIX_SYNCHRONIZED_IO) && (0 < _POSIX_SYNCHRONIZED_IO)
@@ -1585,7 +1585,7 @@ static int objcmd_fdatasync ( ClientData cd, Tcl_Interp * T,
 }
 
 /* syncfs(2) the fs of the open files corresonding to the given fds */
-static int objcmd_syncfs ( ClientData cd, Tcl_Interp * T,
+static int objcmd_syncfs ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
 #if defined (OSLinux)
@@ -1600,20 +1600,20 @@ static int objcmd_syncfs ( ClientData cd, Tcl_Interp * T,
  * wrappers for misc POSIX syscalls
  */
 
-static int objcmd_sync ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sync ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   sync () ;
   return TCL_OK ;
 }
 
-static int objcmd_pfsync ( ClientData cd, Tcl_Interp * T,
+static int objcmd_pfsync ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   return mpsync ( T, objc, objv, FSYNC_FSYNC ) ;
 }
 
-static int objcmd_pfdatasync ( ClientData cd, Tcl_Interp * T,
+static int objcmd_pfdatasync ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
 #if defined (_POSIX_SYNCHRONIZED_IO) && (0 < _POSIX_SYNCHRONIZED_IO)
@@ -1627,7 +1627,7 @@ static int objcmd_pfdatasync ( ClientData cd, Tcl_Interp * T,
 #endif
 }
 
-static int objcmd_psyncfs ( ClientData cd, Tcl_Interp * T,
+static int objcmd_psyncfs ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
 #if defined (OSLinux)
@@ -1641,70 +1641,70 @@ static int objcmd_psyncfs ( ClientData cd, Tcl_Interp * T,
 #endif
 }
 
-static int objcmd_time ( ClientData cd, Tcl_Interp * T,
+static int objcmd_time ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetLongObj ( Tcl_GetObjResult ( T ), (long int) time ( NULL ) ) ;
   return TCL_OK ;
 }
 
-static int objcmd_gethostid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_gethostid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetLongObj ( Tcl_GetObjResult ( T ), gethostid () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_getuid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getuid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), getuid () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_geteuid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_geteuid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), geteuid () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_getgid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getgid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), getgid () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_getegid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getegid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), getegid () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_getpid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getpid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), getpid () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_getppid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getppid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), getppid () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_getpgrp ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getpgrp ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   Tcl_SetIntObj ( Tcl_GetObjResult ( T ), getpgrp () ) ;
   return TCL_OK ;
 }
 
-static int objcmd_getpgid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getpgid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   pid_t p = 0 ;
@@ -1730,7 +1730,7 @@ static int objcmd_getpgid ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_getsid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getsid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   pid_t p = 0 ;
@@ -1756,7 +1756,7 @@ static int objcmd_getsid ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_sethostid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sethostid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1774,7 +1774,7 @@ static int objcmd_sethostid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setuid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setuid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1792,7 +1792,7 @@ static int objcmd_setuid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setgid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setgid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1810,7 +1810,7 @@ static int objcmd_setgid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_seteuid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_seteuid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1828,7 +1828,7 @@ static int objcmd_seteuid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setegid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setegid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -1846,7 +1846,7 @@ static int objcmd_setegid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setreuid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setreuid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -1869,7 +1869,7 @@ static int objcmd_setreuid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setregid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setregid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -1892,7 +1892,7 @@ static int objcmd_setregid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setresuid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setresuid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 3 < objc ) {
@@ -1921,7 +1921,7 @@ static int objcmd_setresuid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setresgid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setresgid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 3 < objc ) {
@@ -1950,7 +1950,7 @@ static int objcmd_setresgid ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setpgid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setpgid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int i = 0 ;
@@ -1985,7 +1985,7 @@ static int objcmd_setpgid ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_setsid ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setsid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   const pid_t p = setsid () ;
@@ -1998,7 +1998,7 @@ static int objcmd_setsid ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_fork ( ClientData cd, Tcl_Interp * T,
+static int objcmd_fork ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   pid_t p = 0 ;
@@ -2014,7 +2014,7 @@ static int objcmd_fork ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_nodename ( ClientData cd, Tcl_Interp * T,
+static int objcmd_nodename ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   struct utsname uts ;
@@ -2027,7 +2027,7 @@ static int objcmd_nodename ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_sysarch ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sysarch ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   struct utsname uts ;
@@ -2040,7 +2040,7 @@ static int objcmd_sysarch ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_sysname ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sysname ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   struct utsname uts ;
@@ -2053,7 +2053,7 @@ static int objcmd_sysname ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_sysrelease ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sysrelease ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   struct utsname uts ;
@@ -2066,7 +2066,7 @@ static int objcmd_sysrelease ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_sysversion ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sysversion ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   struct utsname uts ;
@@ -2079,7 +2079,7 @@ static int objcmd_sysversion ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_uname ( ClientData cd, Tcl_Interp * T,
+static int objcmd_uname ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   struct utsname uts ;
@@ -2135,7 +2135,7 @@ static int objcmd_uname ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_gethostname ( ClientData cd, Tcl_Interp * T,
+static int objcmd_gethostname ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   char buf [ 1 + HOST_NAME_MAX ] = { 0 } ;
@@ -2148,7 +2148,7 @@ static int objcmd_gethostname ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_umask ( ClientData cd, Tcl_Interp * T,
+static int objcmd_umask ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2169,7 +2169,7 @@ static int objcmd_umask ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
+static int objcmd_kill ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -2203,7 +2203,7 @@ static int objcmd_kill ( ClientData cd, Tcl_Interp * T,
 
 /* killpg(2) */
 
-static int objcmd_nice ( ClientData cd, Tcl_Interp * T,
+static int objcmd_nice ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2229,7 +2229,7 @@ static int objcmd_nice ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_msleep ( ClientData cd, Tcl_Interp * T,
+static int objcmd_msleep ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -2248,7 +2248,7 @@ static int objcmd_msleep ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_sleep ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sleep ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -2270,7 +2270,7 @@ static int objcmd_sleep ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_delay ( ClientData cd, Tcl_Interp * T,
+static int objcmd_delay ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -2313,7 +2313,7 @@ static int objcmd_delay ( ClientData cd, Tcl_Interp * T,
 }
 
 /* sleep with nanosleep(2) */
-static int objcmd_nanosleep ( ClientData cd, Tcl_Interp * T,
+static int objcmd_nanosleep ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -2342,7 +2342,7 @@ static int objcmd_nanosleep ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_getcwd ( ClientData cd, Tcl_Interp * T,
+static int objcmd_getcwd ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   char cwd [ 1 + PATH_MAX ] = { '\0' } ;
@@ -2355,7 +2355,7 @@ static int objcmd_getcwd ( ClientData cd, Tcl_Interp * T,
   return TCL_OK ;
 }
 
-static int objcmd_chdir ( ClientData cd, Tcl_Interp * T,
+static int objcmd_chdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2374,7 +2374,7 @@ static int objcmd_chdir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_chroot ( ClientData cd, Tcl_Interp * T,
+static int objcmd_chroot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc && NULL != objv [ 1 ] ) {
@@ -2397,7 +2397,7 @@ static int objcmd_chroot ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_isatty ( ClientData cd, Tcl_Interp * T,
+static int objcmd_isatty ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2426,7 +2426,7 @@ static int objcmd_isatty ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_sethostname ( ClientData cd, Tcl_Interp * T,
+static int objcmd_sethostname ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2445,7 +2445,7 @@ static int objcmd_sethostname ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_setrlimit ( ClientData cd, Tcl_Interp * T,
+static int objcmd_setrlimit ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -2495,7 +2495,67 @@ static int objcmd_setrlimit ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_chmod ( ClientData cd, Tcl_Interp * T,
+static int objcmd_rename ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+    int i = -1, j = -1 ;
+    const char * const src = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+    const char * const dest = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
+
+    if ( ( 0 < i ) && ( 0 < j ) && src && dest && * src && * dest ) {
+      return res_zero ( T, "rename", rename ( src, dest ) ) ;
+    }
+
+    Tcl_AddErrorInfo ( T, "2 file names required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_link ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+    int i = -1, j = -1 ;
+    const char * const src = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+    const char * const dest = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
+
+    if ( ( 0 < i ) && ( 0 < j ) && src && dest && * src && * dest ) {
+      return res_zero ( T, "link", link ( src, dest ) ) ;
+    }
+
+    Tcl_AddErrorInfo ( T, "2 file names required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_symlink ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+    int i = -1, j = -1 ;
+    const char * const src = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+    const char * const dest = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
+
+    if ( ( 0 < i ) && ( 0 < j ) && src && dest && * src && * dest ) {
+      return res_zero ( T, "symlink", symlink ( src, dest ) ) ;
+    }
+
+    Tcl_AddErrorInfo ( T, "2 file names required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "src dest" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_chmod ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -2531,7 +2591,7 @@ static int objcmd_chmod ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mkdir ( ClientData cd, Tcl_Interp * T,
+static int objcmd_mkdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -2569,7 +2629,7 @@ static int objcmd_mkdir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mkfifo ( ClientData cd, Tcl_Interp * T,
+static int objcmd_mkfifo ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -2607,7 +2667,7 @@ static int objcmd_mkfifo ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_unlink ( ClientData cd, Tcl_Interp * T,
+static int objcmd_unlink ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2638,7 +2698,7 @@ static int objcmd_unlink ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_rmdir ( ClientData cd, Tcl_Interp * T,
+static int objcmd_rmdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2669,7 +2729,7 @@ static int objcmd_rmdir ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_remove ( ClientData cd, Tcl_Interp * T,
+static int objcmd_remove ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
@@ -2700,7 +2760,7 @@ static int objcmd_remove ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_execl ( ClientData cd, Tcl_Interp * T,
+static int strcmd_execl ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( ( 1 < argc ) && argv && argv [ 1 ] && argv [ 1 ] [ 0 ] ) {
@@ -2716,7 +2776,7 @@ static int strcmd_execl ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_execl0 ( ClientData cd, Tcl_Interp * T,
+static int strcmd_execl0 ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( ( 2 < argc ) && argv && argv [ 1 ] && argv [ 2 ] &&
@@ -2734,7 +2794,7 @@ static int strcmd_execl0 ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_execlp ( ClientData cd, Tcl_Interp * T,
+static int strcmd_execlp ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( ( 1 < argc ) && argv && argv [ 1 ] && argv [ 1 ] [ 0 ] ) {
@@ -2750,7 +2810,7 @@ static int strcmd_execlp ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_execlp0 ( ClientData cd, Tcl_Interp * T,
+static int strcmd_execlp0 ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( ( 2 < argc ) && argv && argv [ 1 ] && argv [ 2 ] &&
@@ -2768,7 +2828,7 @@ static int strcmd_execlp0 ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_vfork_and_execl_nowait ( ClientData cd, Tcl_Interp * T,
+static int strcmd_vfork_and_execl_nowait ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( ( 1 < argc ) && argv [ 1 ] && * argv [ 1 ] ) {
@@ -2788,7 +2848,7 @@ static int strcmd_vfork_and_execl_nowait ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_vfork_and_execl ( ClientData cd, Tcl_Interp * T,
+static int strcmd_vfork_and_execl ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( ( 1 < argc ) && argv [ 1 ] && * argv [ 1 ] ) {
@@ -2848,7 +2908,7 @@ static int strcmd_chroot ( ClientData cd, Tcl_Interp * T,
 }
 */
 
-static int strcmd_pivot_root ( ClientData cd, Tcl_Interp * T,
+static int strcmd_pivot_root ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
 #if defined (OSLinux)
@@ -2879,7 +2939,7 @@ static int strcmd_pivot_root ( ClientData cd, Tcl_Interp * T,
 #endif
 }
 
-static int strcmd_umount ( ClientData cd, Tcl_Interp * T,
+static int strcmd_umount ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( 1 < argc ) {
@@ -2905,7 +2965,7 @@ static int strcmd_umount ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_umount2 ( ClientData cd, Tcl_Interp * T,
+static int strcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( 1 < argc ) {
@@ -3031,7 +3091,7 @@ static int strcmd_symlink ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_make_files ( ClientData cd, Tcl_Interp * T,
+static int strcmd_make_files ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( 1 < argc ) {
@@ -3079,7 +3139,7 @@ static int strcmd_make_files ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_make_sockets ( ClientData cd, Tcl_Interp * T,
+static int strcmd_make_sockets ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( 1 < argc ) {
@@ -3127,7 +3187,7 @@ static int strcmd_make_sockets ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mkfile ( ClientData cd, Tcl_Interp * T,
+static int objcmd_mkfile ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -3173,7 +3233,7 @@ static int objcmd_mkfile ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mknfile ( ClientData cd, Tcl_Interp * T,
+static int objcmd_mknfile ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -3215,7 +3275,7 @@ static int objcmd_mknfile ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * T,
+static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -3257,7 +3317,7 @@ static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mksock ( ClientData cd, Tcl_Interp * T,
+static int objcmd_mksock ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -3300,7 +3360,7 @@ static int objcmd_mksock ( ClientData cd, Tcl_Interp * T,
 }
 
 /* binding for the truncate(2) syscall */
-static int objcmd_truncate ( ClientData cd, Tcl_Interp * T,
+static int objcmd_truncate ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -3338,7 +3398,7 @@ static int objcmd_truncate ( ClientData cd, Tcl_Interp * T,
 }
 
 /* binding for the swapoff(2) syscall */
-static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
+static int objcmd_swapoff ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
 #if defined (OSLinux) || defined (OSdragonfly) || defined (OSfreebsd) || \
@@ -3375,7 +3435,7 @@ static int objcmd_swapoff ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_mount ( ClientData cd, Tcl_Interp * T,
+static int strcmd_mount ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
   if ( 4 < argc ) {
@@ -3460,7 +3520,7 @@ static int strcmd_mount ( ClientData cd, Tcl_Interp * T,
 /* reset given or all signals to their default actions */
 
 /* tclsh application init function */
-int Tcl_AppInit ( Tcl_Interp * T )
+int Tcl_AppInit ( Tcl_Interp * const T )
 {
   /*
   Tcl_Namespace * nsp = NULL ;
@@ -3723,7 +3783,7 @@ int Tcl_AppInit ( Tcl_Interp * T )
 }
 
 /* Module/Library init function */
-int ux_Init ( Tcl_Interp * T )
+int ux_Init ( Tcl_Interp * const T )
 {
 #ifdef USE_TCL_STUBS
   (void) Tcl_InitStubs ( T, "8.6", 0 ) ;
