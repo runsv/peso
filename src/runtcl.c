@@ -1771,7 +1771,9 @@ static int objcmd_getgroups ( ClientData cd, Tcl_Interp * const T,
     i = getgroups ( GR_ARRAY_SIZE, arr ) ;
     j = ( 0 > i ) ? errno : -1 ;
 
-    if ( 0 > i && 0 < j && EINVAL != j ) {
+    if ( 0 == i ) {
+      return TCL_OK ;
+    } else if ( 0 > i && 0 < j && EINVAL != j ) {
       return psx_err ( T, j, "getgroups" ) ;
     } else if ( 0 < i && GR_ARRAY_SIZE >= i ) {
       for ( j = 0 ; j < i ; ++ j ) {
