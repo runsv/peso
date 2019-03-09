@@ -2363,11 +2363,7 @@ static int objcmd_chdir ( ClientData cd, Tcl_Interp * T,
     const char * const path = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
 
     if ( ( 0 < i ) && path && * path ) {
-      if ( chdir ( path ) ) {
-        return psx_err ( T, errno, "chdir" ) ;
-      }
-
-      return TCL_OK ;
+      return res_zero ( T, "chdir", chdir ( path ) ) ;
     }
 
     Tcl_AddErrorInfo ( T, "non empty path string required" ) ;
