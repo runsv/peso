@@ -1763,7 +1763,7 @@ static int objcmd_getgroups ( ClientData cd, Tcl_Interp * const T,
 {
   int i = -1, j = -1 ;
   gid_t arr [ GR_ARRAY_SIZE ] = { 0 } ;
-  Tcl_Obj * const o = Tcl_GetObjResult () ;
+  Tcl_Obj * const o = Tcl_GetObjResult ( T ) ;
 
   Tcl_SetListObj ( o, -1, NULL ) ;
 
@@ -3588,6 +3588,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::getppid", objcmd_getppid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgrp", objcmd_getpgrp, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getpgid", objcmd_getpgid, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::getgroups", objcmd_getgroups, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sethostid", objcmd_sethostid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setuid", objcmd_setuid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setgid", objcmd_setgid, NULL, NULL ) ;
