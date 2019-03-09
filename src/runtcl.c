@@ -3028,69 +3028,6 @@ static int strcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-static int strcmd_rename ( ClientData cd, Tcl_Interp * T,
-  const int argc, const char ** argv )
-{
-  if ( 2 < argc ) {
-    const char * src = argv [ 1 ] ;
-    const char * dst = argv [ 2 ] ;
-
-    if ( src && dst && * src && * dst ) {
-      if ( rename ( src, dst ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T,
-          "rename failed: ", Tcl_PosixError ( T ), (char *) NULL ) ;
-      } else { return TCL_OK ; }
-    }
-  } else {
-    Tcl_AddErrorInfo ( T, "2 arguments expected" ) ;
-  }
-
-  return TCL_ERROR ;
-}
-
-static int strcmd_link ( ClientData cd, Tcl_Interp * T,
-  const int argc, const char ** argv )
-{
-  if ( 2 < argc ) {
-    const char * src = argv [ 1 ] ;
-    const char * dst = argv [ 2 ] ;
-
-    if ( src && dst && * src && * dst ) {
-      if ( link ( src, dst ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T,
-          "link failed: ", Tcl_PosixError ( T ), (char *) NULL ) ;
-      } else { return TCL_OK ; }
-    }
-  } else {
-    Tcl_AddErrorInfo ( T, "2 arguments expected" ) ;
-  }
-
-  return TCL_ERROR ;
-}
-
-static int strcmd_symlink ( ClientData cd, Tcl_Interp * T,
-  const int argc, const char ** argv )
-{
-  if ( 2 < argc ) {
-    const char * src = argv [ 1 ] ;
-    const char * dst = argv [ 2 ] ;
-
-    if ( src && dst && * src && * dst ) {
-      if ( symlink ( src, dst ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T,
-          "symlink failed: ", Tcl_PosixError ( T ), (char *) NULL ) ;
-      } else { return TCL_OK ; }
-    }
-  } else {
-    Tcl_AddErrorInfo ( T, "2 arguments expected" ) ;
-  }
-
-  return TCL_ERROR ;
-}
-
 static int strcmd_make_files ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
@@ -3124,11 +3061,7 @@ static int strcmd_make_files ( ClientData cd, Tcl_Interp * const T,
 
       if ( str && * str ) {
         if ( mknod ( str, 00600 | S_IFREG | m, 0 ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "mknod \"", str, "\" failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "mknod" ) ;
         }
       }
     }
@@ -3172,11 +3105,7 @@ static int strcmd_make_sockets ( ClientData cd, Tcl_Interp * const T,
 
       if ( str && * str ) {
         if ( mknod ( str, 00600 | S_IFSOCK | m, 0 ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "mknod \"", str, "\" failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "mknod" ) ;
         }
       }
     }
@@ -3212,18 +3141,13 @@ static int objcmd_mkfile ( ClientData cd, Tcl_Interp * const T,
         j = open ( str, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 00600 | m ) ;
 
         if ( 0 > j ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "creat ", str, " failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "open" ) ;
         } else {
-          while ( close ( j ) && ( EINTR == errno ) ) ;
+          (void) close_fd ( j ) ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "empty path arg" ) ;
+        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
-        break ;
       }
     } /* end for */
 
@@ -3256,16 +3180,11 @@ static int objcmd_mknfile ( ClientData cd, Tcl_Interp * const T,
 
       if ( ( 0 < j ) && str && * str ) {
         if ( mknod ( str, 00600 | S_IFREG | m, 0 ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "mknod ", str, " failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "mknod" ) ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "empty path arg" ) ;
+        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
-        break ;
       }
     } /* end for */
 
@@ -3298,16 +3217,11 @@ static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * const T,
 
       if ( ( 0 < j ) && str && * str ) {
         if ( mknod ( str, 00600 | S_IFIFO | m, 0 ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "mknod ", str, " failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "mknod" ) ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "empty path arg" ) ;
+        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
-        break ;
       }
     } /* end for */
 
@@ -3340,16 +3254,11 @@ static int objcmd_mksock ( ClientData cd, Tcl_Interp * const T,
 
       if ( ( 0 < j ) && str && * str ) {
         if ( mknod ( str, 00600 | S_IFSOCK | m, 0 ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "mknod ", str, " failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "mknod" ) ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "empty path arg" ) ;
+        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
-        break ;
       }
     } /* end for */
 
@@ -3592,9 +3501,6 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateCommand ( T, "::ux::pivot_root", strcmd_pivot_root, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::umount", strcmd_umount, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::umount2", strcmd_umount2, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::rename", strcmd_rename, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::link", strcmd_link, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::symlink", strcmd_symlink, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
@@ -3662,6 +3568,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::setsid", objcmd_setsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::fork", objcmd_fork, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nodename", objcmd_nodename, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::hostname", objcmd_nodename, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sysarch", objcmd_sysarch, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sysname", objcmd_sysname, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::osname", objcmd_sysname, NULL, NULL ) ;
@@ -3685,6 +3592,9 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::chroot", objcmd_chroot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::isatty", objcmd_isatty, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sethostname", objcmd_sethostname, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::rename", objcmd_rename, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::link", objcmd_link, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::symlink", objcmd_symlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::chmod", objcmd_chmod, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unlink", objcmd_unlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::rmdir", objcmd_rmdir, NULL, NULL ) ;
