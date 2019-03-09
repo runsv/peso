@@ -1756,6 +1756,40 @@ static int objcmd_getsid ( ClientData cd, Tcl_Interp * const T,
   return TCL_OK ;
 }
 
+#define GR_ARRAY_SIZE		64
+
+static int objcmd_getgroups ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i = -1, j = -1 ;
+  gid_t arr [ GR_ARRAY_SIZE ] = { 0 } ;
+  Tcl_Obj * const o = Tcl_GetObjResult () ;
+
+  Tcl_SetListObj ( o, -1, NULL ) ;
+
+  do {
+    i = getgroups ( GR_ARRAY_SIZE, arr ) ;
+    j = ( 0 > i ) ? errno : -1 ;
+
+    if ( 0 > i && 0 < j && EINVAL != j ) {
+      return psx_err ( T, j, "getgroups" ) ;
+    } else if ( 0 < i && GR_ARRAY_SIZE >= i ) {
+      for ( j = 0 ; j < i ; ++ j ) {
+        if ( Tcl_ListObjAppendElement ( T, o, Tcl_NewLongObj ( arr [ j ] ) )
+          != TCL_OK )
+        {
+          Tcl_AddErrorInfo ( T, "failed to append gid to list object" ) ;
+          return TCL_ERROR ;
+        }
+      }
+
+      return TCL_OK ;
+    }
+  } while ( 0 > i && EINVAL == j ) ;
+
+  return TCL_OK ;
+}
+
 static int objcmd_sethostid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
