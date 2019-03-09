@@ -2084,6 +2084,9 @@ static int objcmd_uname ( ClientData cd, Tcl_Interp * T,
 {
   struct utsname uts ;
 
+  /* zero out result struct before use */
+  memset ( & uts, 0, sizeof ( struct utsname ) ) ;
+
   if ( uname ( & uts ) ) {
     return psx_err ( T, errno, "uname" ) ;
   }
@@ -3128,66 +3131,6 @@ static int strcmd_make_sockets ( ClientData cd, Tcl_Interp * T,
   return TCL_ERROR ;
 }
 
-static int strcmd_uname ( ClientData cd, Tcl_Interp * T,
-  const int argc, const char ** argv )
-{
-  char what = 0 ;
-  struct utsname uts ;
-
-  /* zero out result struct before use */
-  memset ( & uts, 0, sizeof ( struct utsname ) ) ;
-
-  if ( uname ( & uts ) ) {
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AppendResult ( T, "uname failed: ",
-      Tcl_PosixError ( T ), (char *) NULL ) ;
-    return TCL_ERROR ;
-  }
-
-  if ( 1 < argc ) {
-    what = argv [ 1 ][ 0 ] ;
-    if ( '-' == what ) { what = argv [ 1 ][ 1 ] ; }
-  }
-
-  switch ( what ) {
-    case 'n' :
-    case 'N' :
-      /*Tcl_SetResult ( T, uts . nodename, TCL_VOLATILE ) ;	*/
-      Tcl_AppendResult ( T, uts . nodename, (char *) NULL ) ;
-      break ;
-    case 'm' :
-    case 'M' :
-      /*Tcl_SetResult ( T, uts . machine, TCL_VOLATILE ) ;	*/
-      Tcl_AppendResult ( T, uts . machine, (char *) NULL ) ;
-      break ;
-    case 'r' :
-    case 'R' :
-      /*Tcl_SetResult ( T, uts . release, TCL_VOLATILE ) ;	*/
-      Tcl_AppendResult ( T, uts . release, (char *) NULL ) ;
-      break ;
-    case 's' :
-    case 'S' :
-      /*Tcl_SetResult ( T, uts . sysname, TCL_VOLATILE ) ;	*/
-      Tcl_AppendResult ( T, uts . sysname, (char *) NULL ) ;
-      break ;
-    case 'v' :
-    case 'V' :
-      /*Tcl_SetResult ( T, uts . version, TCL_VOLATILE ) ;	*/
-      Tcl_AppendResult ( T, uts . version, (char *) NULL ) ;
-      break ;
-    case 'a' :
-    case 'A' :
-    default :
-      Tcl_AppendElement ( T, uts . nodename ) ;
-      Tcl_AppendElement ( T, uts . machine ) ;
-      Tcl_AppendElement ( T, uts . sysname ) ;
-      Tcl_AppendElement ( T, uts . release ) ;
-      break ;
-  }
-
-  return TCL_OK ;
-}
-
 static int objcmd_mkfile ( ClientData cd, Tcl_Interp * T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3598,7 +3541,6 @@ int Tcl_AppInit ( Tcl_Interp * T )
   (void) Tcl_CreateCommand ( T, "::ux::symlink", strcmd_symlink, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::suname", strcmd_uname, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
