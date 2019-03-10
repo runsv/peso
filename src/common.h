@@ -73,7 +73,6 @@
 #include <wordexp.h>
 #include <regex.h>
 #include <ftw.h>
-#include <mntent.h>
 #include <termios.h>
 #include <syslog.h>
 #include <spawn.h>
@@ -82,6 +81,7 @@
 #include <syscall.h>
 #include <aio.h>
 #include <sched.h>
+#include <utime.h>
 #include <sys/cdefs.h>
 #include <sys/errno.h>
 #include <sys/syscall.h>
@@ -117,7 +117,6 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <utime.h>
 #include <utmp.h>
 /*
 #include <utmpx.h>
@@ -161,6 +160,7 @@ if defined(__FreeBSD__) || defined(__APPLE__) || defined(__OpenBSD__) || defined
 #  include <asm/types.h>
 #  include <error.h>
 #  include <fstab.h>
+#  include <mntent.h>
 #  include <paths.h>
 #  include <ucontext.h>
 #  include <ifaddrs.h>
