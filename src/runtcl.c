@@ -450,63 +450,103 @@ static int objcmd_cad_off ( ClientData cd, Tcl_Interp * const T,
   return do_reboot ( T, RB_ENABLE_CAD ) ;
 }
 
+/* binding for the Linux mount(2) syscall */
 static int objcmd_mount ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 4 < objc ) {
-    long int f = 0 ;
-    const char * src = NULL ;
-    const char * dest = NULL ;
-    const char * fs = NULL ;
-    const char * data = NULL ;
+  int on = 1, i = objc ;
+  int f_bind, f_nodev, f_noexec, f_nosuid, f_rdonly, f_rec ;
+  long int f = 0 ;
+  char * src = NULL ;
+  char * dest = NULL ;
+  char * fs = NULL ;
+  char * data = NULL ;
+  Tcl_ArgvInfo aiv [ 8 ] ;
 
-    if ( strstr ( str, "noatime" ) ) { f |= MS_NOATIME ; }
-          else if ( strstr ( str, "nodev" ) ) { f |= MS_NODEV ; }
-          else if ( strstr ( str, "nodiratime" ) ) { f |= MS_NODIRATIME ; }
-          else if ( strstr ( str, "noexec" ) ) { f |= MS_NOEXEC ; }
-          else if ( strstr ( str, "nosuid" ) ) { f |= MS_NOSUID ; }
-          else if ( strstr ( str, "unbindab" ) ) { f |= MS_UNBINDABLE ; }
-          else if ( strstr ( str, "remount" ) ) { f |= MS_REMOUNT ; }
-          else if ( strstr ( str, "bind" ) ) { f |= MS_BIND ; }
-          else if ( strstr ( str, "dirsync" ) ) { f |= MS_DIRSYNC ; }
-          else if ( strstr ( str, "lazytime" ) ) { f |= MS_LAZYTIME ; }
-          else if ( strstr ( str, "mandlock" ) ) { f |= MS_MANDLOCK ; }
-          else if ( strstr ( str, "move" ) ) { f |= MS_MOVE ; }
-          else if ( strstr ( str, "privat" ) ) { f |= MS_PRIVATE ; }
-          else if ( strstr ( str, "readon" ) ) { f |= MS_RDONLY ; }
-          else if ( strstr ( str, "relatime" ) ) { f |= MS_RELATIME ; }
-          else if ( strstr ( str, "rec" ) ) { f |= MS_REC ; }
-          else if ( strstr ( str, "share" ) ) { f |= MS_SHARED ; }
-          else if ( strstr ( str, "slave" ) ) { f |= MS_SLAVE ; }
-          else if ( strstr ( str, "silent" ) ) { f |= MS_SILENT ; }
-          else if ( strstr ( str, "strictatime" ) ) { f |= MS_STRICTATIME ; }
-    else if ( strstr ( str, "sync" ) ) { f |= MS_SYNCHRONOUS ; }
+  /*
+  if ( strstr ( str, "noatime" ) ) { f |= MS_NOATIME ; }
+  else if ( strstr ( str, "nodiratime" ) ) { f |= MS_NODIRATIME ; }
+  else if ( strstr ( str, "unbindab" ) ) { f |= MS_UNBINDABLE ; }
+  else if ( strstr ( str, "remount" ) ) { f |= MS_REMOUNT ; }
+  else if ( strstr ( str, "dirsync" ) ) { f |= MS_DIRSYNC ; }
+  else if ( strstr ( str, "lazytime" ) ) { f |= MS_LAZYTIME ; }
+  else if ( strstr ( str, "mandlock" ) ) { f |= MS_MANDLOCK ; }
+  else if ( strstr ( str, "move" ) ) { f |= MS_MOVE ; }
+  else if ( strstr ( str, "privat" ) ) { f |= MS_PRIVATE ; }
+  else if ( strstr ( str, "relatime" ) ) { f |= MS_RELATIME ; }
+  else if ( strstr ( str, "share" ) ) { f |= MS_SHARED ; }
+  else if ( strstr ( str, "slave" ) ) { f |= MS_SLAVE ; }
+  else if ( strstr ( str, "silent" ) ) { f |= MS_SILENT ; }
+  else if ( strstr ( str, "strictatime" ) ) { f |= MS_STRICTATIME ; }
+  else if ( strstr ( str, "sync" ) ) { f |= MS_SYNCHRONOUS ; }
+  */
+  /* default values for boolean option variables */
+  f_bind = f_nodev = f_noexec = f_nosuid = f_rdonly = f_rec = 0 ;
 
-    /*
-    if ( 3 < objc ) {
-      Tcl_ArgvInfo aiv [ 2 ] ;
-      Tcl_Obj ** rem = NULL ;
+  /* zero out the arg info option array before use */
+  (void) memset ( aiv, 0, sizeof ( aiv ) ) ;
 
-      aiv [ 0 ] . type = TCL_ARGV_INT ;
-      aiv [ 0 ] . keyStr = "-m" ;
-      aiv [ 0 ] . srcPtr = NULL ;
-      aiv [ 0 ] . dstPtr = & i ;
-      aiv [ 1 ] . type = TCL_ARGV_END ;
+  /* set up the array of known/allowed options */
+  /* help text option */
+  aiv [ 0 ] . type = TCL_ARGV_HELP ;
+  aiv [ 0 ] . helpStr = "-type fstype" ;
+  /* options that take a string arg */
+  aiv [ 1 ] . type = TCL_ARGV_STRING ;
+  aiv [ 1 ] . keyStr = "-type" ;
+  aiv [ 1 ] . dstPtr = fs ;
+  aiv [ 2 ] . type = TCL_ARGV_STRING ;
+  aiv [ 2 ] . keyStr = "-data" ;
+  aiv [ 2 ] . dstPtr = data ;
+  aiv [ 3 ] . type = TCL_ARGV_STRING ;
+  aiv [ 3 ] . keyStr = "-from" ;
+  aiv [ 3 ] . dstPtr = src ;
+  aiv [ 4 ] . type = TCL_ARGV_STRING ;
+  aiv [ 4 ] . keyStr = "-to" ;
+  aiv [ 4 ] . dstPtr = dest ;
+  /* boolean options without args */
+  /* bind flag */
+  aiv [ 5 ] . type = TCL_ARGV_INT ;
+  aiv [ 5 ] . keyStr = "-bind" ;
+  aiv [ 5 ] . srcPtr = & on ;
+  aiv [ 5 ] . dstPtr = & f_nodev ;
+  /* nodev flag */
+  aiv [ 6 ] . type = TCL_ARGV_INT ;
+  aiv [ 6 ] . keyStr = "-nodev" ;
+  aiv [ 6 ] . srcPtr = & on ;
+  aiv [ 6 ] . dstPtr = & f_nodev ;
+  /* noexec flag */
+  aiv [ 6 ] . keyStr = "-noexec" ;
+  /* nosuid flag */
+  aiv [ 6 ] . keyStr = "-nosuid" ;
+  aiv [ 6 ] . keyStr = "-rdonly" ;
+  aiv [ 6 ] . keyStr = "-rec" ;
+  /* end of arg info options */
+  aiv [ 7 ] . type = TCL_ARGV_END ;
 
-      if ( TCL_OK == Tcl_ParseArgsObjv ( T, aiv, & objc, objv, & rem ) ) {
-      }
-    }
-    */
+  if ( Tcl_ParseArgsObjv ( T, aiv, & i, objv, NULL ) == TCL_OK ) {
+    if ( f_bind ) { f |= MS_BIND ; }
+
+    if ( f_nodev ) { f |= MS_NODEV ; }
+
+    if ( f_noexec ) { f |= MS_NOEXEC ; }
+
+    if ( f_nosuid ) { f |= MS_NOSUID ; }
+
+    if ( f_rdonly ) { f |= MS_RDONLY ; }
+
+    if ( f_rec ) { f |= MS_REC ; }
 
     if ( src && dest && fs && data && * src && * dest && * fs && * data ) {
       return res_zero ( T, "mount", mount ( src, dest, fs, f, data ) ) ;
     }
+
+    Tcl_AddErrorInfo ( T, "missing args" ) ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, "src dest" ) ;
   return TCL_ERROR ;
 }
 
+/* binding for the Linux umount(2) syscall */
 static int objcmd_umount ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -527,9 +567,18 @@ static int objcmd_umount ( ClientData cd, Tcl_Interp * const T,
         return TCL_ERROR ;
       }
     }
+
+    return TCL_OK ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, "path [path ...]" ) ;
+  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
+  return TCL_ERROR ;
+}
+
+/* binding for the Linux umount2(2) syscall */
+static int objcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
   return TCL_ERROR ;
 }
 
@@ -3762,7 +3811,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::syncfs", objcmd_syncfs, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::psyncfs", objcmd_psyncfs, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umount", objcmd_umount, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_unmount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_umount, NULL, NULL ) ;
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
   (void) Tcl_CreateObjCommand ( T, "::ux::powercycle", objcmd_powercycle, NULL, NULL ) ;
