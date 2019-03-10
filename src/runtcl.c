@@ -450,6 +450,89 @@ static int objcmd_cad_off ( ClientData cd, Tcl_Interp * const T,
   return do_reboot ( T, RB_ENABLE_CAD ) ;
 }
 
+static int objcmd_mount ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 4 < objc ) {
+    long int f = 0 ;
+    const char * src = NULL ;
+    const char * dest = NULL ;
+    const char * fs = NULL ;
+    const char * data = NULL ;
+
+    if ( strstr ( str, "noatime" ) ) { f |= MS_NOATIME ; }
+          else if ( strstr ( str, "nodev" ) ) { f |= MS_NODEV ; }
+          else if ( strstr ( str, "nodiratime" ) ) { f |= MS_NODIRATIME ; }
+          else if ( strstr ( str, "noexec" ) ) { f |= MS_NOEXEC ; }
+          else if ( strstr ( str, "nosuid" ) ) { f |= MS_NOSUID ; }
+          else if ( strstr ( str, "unbindab" ) ) { f |= MS_UNBINDABLE ; }
+          else if ( strstr ( str, "remount" ) ) { f |= MS_REMOUNT ; }
+          else if ( strstr ( str, "bind" ) ) { f |= MS_BIND ; }
+          else if ( strstr ( str, "dirsync" ) ) { f |= MS_DIRSYNC ; }
+          else if ( strstr ( str, "lazytime" ) ) { f |= MS_LAZYTIME ; }
+          else if ( strstr ( str, "mandlock" ) ) { f |= MS_MANDLOCK ; }
+          else if ( strstr ( str, "move" ) ) { f |= MS_MOVE ; }
+          else if ( strstr ( str, "privat" ) ) { f |= MS_PRIVATE ; }
+          else if ( strstr ( str, "readon" ) ) { f |= MS_RDONLY ; }
+          else if ( strstr ( str, "relatime" ) ) { f |= MS_RELATIME ; }
+          else if ( strstr ( str, "rec" ) ) { f |= MS_REC ; }
+          else if ( strstr ( str, "share" ) ) { f |= MS_SHARED ; }
+          else if ( strstr ( str, "slave" ) ) { f |= MS_SLAVE ; }
+          else if ( strstr ( str, "silent" ) ) { f |= MS_SILENT ; }
+          else if ( strstr ( str, "strictatime" ) ) { f |= MS_STRICTATIME ; }
+    else if ( strstr ( str, "sync" ) ) { f |= MS_SYNCHRONOUS ; }
+
+    /*
+    if ( 3 < objc ) {
+      Tcl_ArgvInfo aiv [ 2 ] ;
+      Tcl_Obj ** rem = NULL ;
+
+      aiv [ 0 ] . type = TCL_ARGV_INT ;
+      aiv [ 0 ] . keyStr = "-m" ;
+      aiv [ 0 ] . srcPtr = NULL ;
+      aiv [ 0 ] . dstPtr = & i ;
+      aiv [ 1 ] . type = TCL_ARGV_END ;
+
+      if ( TCL_OK == Tcl_ParseArgsObjv ( T, aiv, & objc, objv, & rem ) ) {
+      }
+    }
+    */
+
+    if ( src && dest && fs && data && * src && * dest && * fs && * data ) {
+      return res_zero ( T, "mount", mount ( src, dest, fs, f, data ) ) ;
+    }
+  }
+
+  Tcl_WrongNumArgs ( T, 1, "src dest" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_umount ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * path = NULL ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( umount ( path ) ) {
+          return psx_err ( T, errno, "umount" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "path to mount point required" ) ;
+        return TCL_ERROR ;
+      }
+    }
+  }
+
+  Tcl_WrongNumArgs ( T, 1, "path [path ...]" ) ;
+  return TCL_ERROR ;
+}
+
 #elif defined (OSdragonfly)
 
 /*
@@ -3040,32 +3123,6 @@ static int strcmd_pivot_root ( ClientData cd, Tcl_Interp * const T,
 #endif
 }
 
-static int strcmd_umount ( ClientData cd, Tcl_Interp * const T,
-  const int argc, const char ** argv )
-{
-  if ( 1 < argc ) {
-    int i ;
-    const char * str = NULL ;
-
-    for ( i = 1 ; argc > i ; ++ i ) {
-      str = argv [ i ] ;
-
-      if ( str && * str && umount ( str ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T, argv [ 0 ],
-          ": umount ", str, " failed: ",
-        Tcl_PosixError ( T ), (char *) NULL ) ;
-        return TCL_ERROR ;
-        break ;
-      }
-    }
-
-    if ( str && * str ) { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
-}
-
 static int strcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
@@ -3450,31 +3507,10 @@ static int strcmd_mount ( ClientData cd, Tcl_Interp * const T,
 {
   if ( 4 < argc ) {
     long int f = 0 ;
-    const char * src = NULL ;
-    const char * dst = NULL ;
-    const char * fs = NULL ;
-    const char * data = NULL ;
-
-    /*
-    if ( 3 < objc ) {
-      Tcl_ArgvInfo aiv [ 2 ] ;
-      Tcl_Obj ** rem = NULL ;
-
-      aiv [ 0 ] . type = TCL_ARGV_INT ;
-      aiv [ 0 ] . keyStr = "-m" ;
-      aiv [ 0 ] . srcPtr = NULL ;
-      aiv [ 0 ] . dstPtr = & i ;
-      aiv [ 1 ] . type = TCL_ARGV_END ;
-
-      if ( TCL_OK == Tcl_ParseArgsObjv ( T, aiv, & objc, objv, & rem ) ) {
-      }
-    }
-    */
-
-    src = argv [ 1 ] ;
-    dst = argv [ 2 ] ;
-    fs = argv [ 3 ] ;
-    data = argv [ 4 ] ;
+    const char * src = argv [ 1 ] ;
+    const char * dest = argv [ 2 ] ;
+    const char * fs = argv [ 3 ] ;
+    const char * data = argv [ 4 ] ;
 
     if ( 5 < argc ) {
       /* parse given command flags */
@@ -3510,13 +3546,8 @@ static int strcmd_mount ( ClientData cd, Tcl_Interp * const T,
       } /* end for */
     }
 
-    if ( src && dst && fs && data && * src && * dst && * fs && * data ) {
-      if ( mount ( src, dst, fs, f, data ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T,
-          "mount failed: ",
-          Tcl_PosixError ( T ), (char *) NULL ) ;
-      } else { return TCL_OK ; }
+    if ( src && dest && fs && data && * src && * dest && * fs && * data ) {
+      return res_zero ( T, "mount", mount ( src, dest, fs, f, data ) ) ;
     }
   }
 
@@ -3601,11 +3632,10 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateCommand ( T, "::ux::execlp", strcmd_execlp, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::execlp0", strcmd_execlp0, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::pivot_root", strcmd_pivot_root, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::umount", strcmd_umount, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::umount2", strcmd_umount2, NULL, NULL ) ;
+  (void) Tcl_CreateCommand ( T, "::ux::sumount2", strcmd_umount2, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::mount", strcmd_mount, NULL, NULL ) ;
+  (void) Tcl_CreateCommand ( T, "::ux::smount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
   (void) Tcl_CreateObjCommand ( T, "::ux::get_errno", objcmd_get_errno, NULL, NULL ) ;
@@ -3731,6 +3761,8 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::cad_off", objcmd_cad_off, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::syncfs", objcmd_syncfs, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::psyncfs", objcmd_psyncfs, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::umount", objcmd_umount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_unmount, NULL, NULL ) ;
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
   (void) Tcl_CreateObjCommand ( T, "::ux::powercycle", objcmd_powercycle, NULL, NULL ) ;
