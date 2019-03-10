@@ -253,7 +253,7 @@ static int fs_acc ( Tcl_Interp * const T, const int objc, Tcl_Obj * const * objv
   if ( 1 < objc ) {
     int i ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       if ( NULL == objv [ i ] ) {
         return TCL_ERROR ;
       } else if ( Tcl_FSAccess ( objv [ i ], mode ) ) {
@@ -325,7 +325,7 @@ static int mpsync ( Tcl_Interp * const T, const int objc, Tcl_Obj * const * objv
     int i, j ;
     const char * path = NULL ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       j = -1 ;
       path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
@@ -614,7 +614,7 @@ static int do_unmount ( Tcl_interp * const T, const int objc,
     int i, j ;
     const char * path = NULL ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       j = -1 ;
       path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
@@ -656,7 +656,7 @@ static int objcmd_swapon ( ClientData cd, Tcl_Interp * const T,
     int i, j ;
     const char * path = NULL ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       j = -1 ;
       path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
@@ -1016,7 +1016,7 @@ static int objcmd_bit_and_int ( ClientData cd, Tcl_Interp * const T,
   if ( 2 < objc ) {
     int i, j, r = ~ 0 ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
         r &= j ;
       } else {
@@ -1040,7 +1040,7 @@ static int objcmd_bit_or_int ( ClientData cd, Tcl_Interp * const T,
   if ( 2 < objc ) {
     int i, j, r = 0 ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
         r |= j ;
       } else {
@@ -1063,7 +1063,7 @@ static int objcmd_add_int ( ClientData cd, Tcl_Interp * const T,
 {
   int i, j, r = 0 ;
 
-  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+  for ( i = 1 ; objc > i ; ++ i ) {
     j = 0 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
@@ -1085,7 +1085,7 @@ static int objcmd_add_long_int ( ClientData cd, Tcl_Interp * const T,
   int i ;
   long int j, r = 0 ;
 
-  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+  for ( i = 1 ; objc > i ; ++ i ) {
     j = 0 ;
 
     if ( Tcl_GetLongFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
@@ -1107,7 +1107,7 @@ static int objcmd_add_wide_int ( ClientData cd, Tcl_Interp * const T,
   int i ;
   Tcl_WideInt j, r = 0 ;
 
-  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+  for ( i = 1 ; objc > i ; ++ i ) {
     j = 0 ;
 
     if ( Tcl_GetWideIntFromObj ( T, objv [ i ], & j ) == TCL_OK ) {
@@ -1129,7 +1129,7 @@ static int objcmd_add_double ( ClientData cd, Tcl_Interp * const T,
   int i ;
   double d, r = 0.0 ;
 
-  for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+  for ( i = 1 ; objc > i ; ++ i ) {
     d = 0.0 ;
 
     if ( Tcl_GetDoubleFromObj ( T, objv [ i ], & d ) == TCL_OK ) {
@@ -1256,7 +1256,7 @@ static int objcmd_fs_remove ( ClientData cd, Tcl_Interp * const T,
   if ( 1 < objc ) {
     int i ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       if ( Tcl_FSDeleteFile ( objv [ i ] ) != TCL_OK ) {
         Tcl_AddErrorInfo ( T, "FSDeleteFile() failed" ) ;
         return TCL_ERROR ;
@@ -1276,7 +1276,7 @@ static int objcmd_fs_mkdir ( ClientData cd, Tcl_Interp * const T,
   if ( 1 < objc ) {
     int i ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       if ( Tcl_FSCreateDirectory ( objv [ i ] ) != TCL_OK ) {
         Tcl_AddErrorInfo ( T, "FSCreateDirectory() failed" ) ;
         return TCL_ERROR ;
@@ -1297,7 +1297,7 @@ static int objcmd_fs_rmdir ( ClientData cd, Tcl_Interp * const T,
     int i ;
     Tcl_Obj * o = NULL ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       if ( Tcl_FSRemoveDirectory ( objv [ i ], 1, & o ) != TCL_OK ) {
         Tcl_AddErrorInfo ( T, "FSCreateDirectory() failed for " ) ;
         Tcl_AppendObjToErrorInfo ( T, o ) ;
@@ -1330,7 +1330,7 @@ static int objcmd_fs_copy_file ( ClientData cd, Tcl_Interp * const T,
   if ( 2 < objc ) {
     int i ;
 
-    for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 2 ; objc > i ; ++ i ) {
       if ( Tcl_FSCopyFile ( objv [ 1 ], objv [ i ] ) != TCL_OK ) {
         Tcl_AddErrorInfo ( T, "FSCopyFile() failed" ) ;
         return TCL_ERROR ;
@@ -1351,7 +1351,7 @@ static int objcmd_fs_copy_dir ( ClientData cd, Tcl_Interp * const T,
     int i ;
     Tcl_Obj * o = NULL ;
 
-    for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 2 ; objc > i ; ++ i ) {
       if ( Tcl_FSCopyDirectory ( objv [ 1 ], objv [ i ], & o ) != TCL_OK ) {
         Tcl_AddErrorInfo ( T, "FSCopyDirectory() failed for " ) ;
         Tcl_AppendObjToErrorInfo ( T, o ) ;
@@ -1442,7 +1442,7 @@ static int objcmd_fs_utime ( ClientData cd, Tcl_Interp * const T,
       return TCL_ERROR ;
     }
 
-    for ( i = 3 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 3 ; objc > i ; ++ i ) {
       if ( Tcl_FSUtime ( objv [ i ], & tv ) ) {
         return psx_err ( T, errno, "FSUtime" ) ;
       }
@@ -1712,7 +1712,7 @@ static int sync_fds ( Tcl_Interp * const T, const int objc, Tcl_Obj * const * ob
   if ( 1 < objc ) {
     int i, j ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       j = -1 ;
 
       if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ i ], & j ) && 0 <= j ) {
@@ -2168,7 +2168,7 @@ static int objcmd_setgroups ( ClientData cd, Tcl_Interp * const T,
   size_t s = 0 ;
   gid_t arr [ GR_ARRAY_SIZE ] = { 0 } ;
 
-  for ( i = 1 ; GR_ARRAY_SIZE > i && objc > i && NULL != objv [ i ] ; ++ i ) {
+  for ( i = 1 ; GR_ARRAY_SIZE > i && objc > i ; ++ i ) {
     j = -1 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK && 0 <= j ) {
@@ -2412,7 +2412,7 @@ static int objcmd_kill ( ClientData cd, Tcl_Interp * const T,
     {
       int i, p ;
 
-      for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      for ( i = 2 ; objc > i ; ++ i ) {
         if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & p ) == TCL_OK ) {
           if ( kill ( (pid_t) p, s ) ) {
             return psx_err ( T, errno, "kill" ) ;
@@ -3492,7 +3492,7 @@ static int objcmd_truncate ( ClientData cd, Tcl_Interp * const T,
       return TCL_ERROR ;
     }
 
-    for ( i = 2 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 2 ; objc > i ; ++ i ) {
       j = -1 ;
       path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
@@ -3523,7 +3523,7 @@ static int objcmd_swapoff ( ClientData cd, Tcl_Interp * const T,
     int i, j ;
     const char * path = NULL ;
 
-    for ( i = 1 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+    for ( i = 1 ; objc > i ; ++ i ) {
       j = -1 ;
       path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
@@ -3548,58 +3548,6 @@ static int objcmd_swapoff ( ClientData cd, Tcl_Interp * const T,
 #else
   Tcl_AddErrorInfo ( T, "Platform not supported" ) ;
 #endif
-  return TCL_ERROR ;
-}
-
-static int strcmd_mount ( ClientData cd, Tcl_Interp * const T,
-  const int argc, const char ** argv )
-{
-  if ( 4 < argc ) {
-    long int f = 0 ;
-    const char * src = argv [ 1 ] ;
-    const char * dest = argv [ 2 ] ;
-    const char * fs = argv [ 3 ] ;
-    const char * data = argv [ 4 ] ;
-
-    if ( 5 < argc ) {
-      /* parse given command flags */
-      int i ;
-      const char * str = NULL ;
-
-      for ( i = 5 ; argc > i ; ++ i ) {
-        str = argv [ i ] ;
-
-        if ( str && * str ) {
-          if ( strstr ( str, "noatime" ) ) { f |= MS_NOATIME ; }
-          else if ( strstr ( str, "nodev" ) ) { f |= MS_NODEV ; }
-          else if ( strstr ( str, "nodiratime" ) ) { f |= MS_NODIRATIME ; }
-          else if ( strstr ( str, "noexec" ) ) { f |= MS_NOEXEC ; }
-          else if ( strstr ( str, "nosuid" ) ) { f |= MS_NOSUID ; }
-          else if ( strstr ( str, "unbindab" ) ) { f |= MS_UNBINDABLE ; }
-          else if ( strstr ( str, "remount" ) ) { f |= MS_REMOUNT ; }
-          else if ( strstr ( str, "bind" ) ) { f |= MS_BIND ; }
-          else if ( strstr ( str, "dirsync" ) ) { f |= MS_DIRSYNC ; }
-          else if ( strstr ( str, "lazytime" ) ) { f |= MS_LAZYTIME ; }
-          else if ( strstr ( str, "mandlock" ) ) { f |= MS_MANDLOCK ; }
-          else if ( strstr ( str, "move" ) ) { f |= MS_MOVE ; }
-          else if ( strstr ( str, "privat" ) ) { f |= MS_PRIVATE ; }
-          else if ( strstr ( str, "readon" ) ) { f |= MS_RDONLY ; }
-          else if ( strstr ( str, "relatime" ) ) { f |= MS_RELATIME ; }
-          else if ( strstr ( str, "rec" ) ) { f |= MS_REC ; }
-          else if ( strstr ( str, "share" ) ) { f |= MS_SHARED ; }
-          else if ( strstr ( str, "slave" ) ) { f |= MS_SLAVE ; }
-          else if ( strstr ( str, "silent" ) ) { f |= MS_SILENT ; }
-          else if ( strstr ( str, "strictatime" ) ) { f |= MS_STRICTATIME ; }
-          else if ( strstr ( str, "sync" ) ) { f |= MS_SYNCHRONOUS ; }
-        }
-      } /* end for */
-    }
-
-    if ( src && dest && fs && data && * src && * dest && * fs && * data ) {
-      return res_zero ( T, "mount", mount ( src, dest, fs, f, data ) ) ;
-    }
-  }
-
   return TCL_ERROR ;
 }
 
@@ -3684,7 +3632,6 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateCommand ( T, "::ux::sumount2", strcmd_umount2, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::smount", strcmd_mount, NULL, NULL ) ;
 
   /* add new object commands */
   (void) Tcl_CreateObjCommand ( T, "::ux::get_errno", objcmd_get_errno, NULL, NULL ) ;
