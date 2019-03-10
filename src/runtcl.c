@@ -1,13 +1,10 @@
 /*
  * runtcl.c
  *
- * interpreter for Tcl scripts
+ * interpreter to run Tcl scripts
 
-Look for relevant file + unix functions in the OCaml stdlib.
-
-  FS: copy/delete files/dirs
+  Look up relevant file + unix functions in the OCaml stdlib
   SysV IPC: msgqueue functions
-  setgroups() mit array aus 64 elementen
   Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...}
   Ensembles fs + x
 
@@ -1288,6 +1285,44 @@ static int objcmd_fs_symlink ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
+static int objcmd_fs_utime ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 3 < objc ) {
+    long int i = -1 ;
+    struct utimbuf tv ;
+
+    tv . actime = 0 ;
+    tv . modtime = 0 ;
+
+    if ( Tcl_GetLongFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 <= i ) {
+      tv . actime = i ;
+      i = -1 ;
+    } else {
+      Tcl_AddErrorInfo ( T, "non negative integer arg required" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetLongFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 <= i ) {
+      tv . modtime = i ;
+    } else {
+      Tcl_AddErrorInfo ( T, "non negative integer arg required" ) ;
+      return TCL_ERROR ;
+    }
+
+    for ( i = 3 ; objc > i && NULL != objv [ i ] ; ++ i ) {
+      if ( Tcl_FSUtime ( objv [ i ], & tv ) ) {
+        return psx_err ( T, errno, "FSUtime" ) ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "atime mtime file [file ...]" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_fs_acc_ex ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -2001,7 +2036,7 @@ static int objcmd_setgroups ( ClientData cd, Tcl_Interp * const T,
   size_t s = 0 ;
   gid_t arr [ GR_ARRAY_SIZE ] = { 0 } ;
 
-  for ( i = 1 ; GR_ARRAY_SIZE > i && objc > i ; ++ i ) {
+  for ( i = 1 ; GR_ARRAY_SIZE > i && objc > i && NULL != objv [ i ] ; ++ i ) {
     j = -1 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK && 0 <= j ) {
@@ -3527,6 +3562,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::fs::readlink", objcmd_fs_readlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::link", objcmd_fs_link, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::symlink", objcmd_fs_symlink, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::fs::utime", objcmd_fs_utime, NULL, NULL ) ;
   /* access(2) related */
   (void) Tcl_CreateObjCommand ( T, "::fs::ex", objcmd_fs_acc_ex, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::exists", objcmd_fs_acc_ex, NULL, NULL ) ;
