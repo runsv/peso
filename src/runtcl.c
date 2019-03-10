@@ -1994,6 +1994,28 @@ static int objcmd_clear_groups ( ClientData cd, Tcl_Interp * const T,
   return res_zero ( T, "setgroups", setgroups ( 0, & g ) ) ;
 }
 
+static int objcmd_setgroups ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  int i, j ;
+  size_t s = 0 ;
+  gid_t arr [ GR_ARRAY_SIZE ] = { 0 } ;
+
+  for ( i = 1 ; GR_ARRAY_SIZE > i && objc > i ; ++ i ) {
+    j = -1 ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK && 0 <= j ) {
+      arr [ i ] = j ;
+      ++ s ;
+    } else {
+      Tcl_AddErrorInfo ( T, "illegal gid" ) ;
+      return TCL_ERROR ;
+    }
+  }
+
+  return res_zero ( T, "setgroups", setgroups ( s, arr ) ) ;
+}
+
 static int objcmd_setpgid ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3611,6 +3633,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::getsid", objcmd_getsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::clear_groups", objcmd_clear_groups, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cleargroups", objcmd_clear_groups, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setgroups", objcmd_setgroups, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setpgid", objcmd_setpgid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::setsid", objcmd_setsid, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::fork", objcmd_fork, NULL, NULL ) ;
