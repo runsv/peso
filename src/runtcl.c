@@ -1001,7 +1001,7 @@ static int objcmd_get_errno ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_bit_neg_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     int i = 0 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
@@ -1021,7 +1021,7 @@ static int objcmd_bit_neg_int ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_bit_neg_long_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     long int i = 0 ;
 
     if ( Tcl_GetLongFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
@@ -1041,7 +1041,7 @@ static int objcmd_bit_neg_long_int ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_bit_neg_wide_int ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     Tcl_WideInt i = 0 ;
 
     if ( Tcl_GetWideIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
@@ -1197,9 +1197,7 @@ static int objcmd_texit ( ClientData cd, Tcl_Interp * const T,
 {
   int i = 0 ;
 
-  if ( 1 < objc && NULL != objv [ 1 ] &&
-    Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK )
-  {
+  if ( 1 < objc && Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
     Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
     return TCL_ERROR ;
   }
@@ -1213,9 +1211,7 @@ static int objcmd_exit ( ClientData cd, Tcl_Interp * const T,
 {
   int i = 0 ;
 
-  if ( 1 < objc && NULL != objv [ 1 ] &&
-    Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK )
-  {
+  if ( 1 < objc && Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
     Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
     return TCL_ERROR ;
   }
@@ -1229,9 +1225,7 @@ static int objcmd_uexit ( ClientData cd, Tcl_Interp * const T,
 {
   int i = 0 ;
 
-  if ( 1 < objc && NULL != objv [ 1 ] &&
-    Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK )
-  {
+  if ( 1 < objc && Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
     Tcl_AddErrorInfo ( T, "invalid integer arg" ) ;
     return TCL_ERROR ;
   }
@@ -1290,7 +1284,7 @@ static int objcmd_fs_getcwd ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_fs_chdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     return res_zero ( T, "FSChdir", Tcl_FSChdir ( objv [ 1 ] ) ) ;
   }
 
@@ -1363,7 +1357,7 @@ static int objcmd_fs_rmdir ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_fs_rename ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+  if ( 2 < objc ) {
     return res_zero ( T, "FSRenameFile",
       Tcl_FSRenameFile ( objv [ 1 ], objv [ 2 ] ) ) ;
   }
@@ -1417,7 +1411,7 @@ static int objcmd_fs_copy_dir ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_fs_readlink ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     Tcl_Obj * const rp = Tcl_FSLink ( objv [ 1 ], NULL, 0 ) ;
 
     if ( rp ) {
@@ -1436,7 +1430,7 @@ static int objcmd_fs_readlink ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_fs_link ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+  if ( 2 < objc ) {
     if ( Tcl_FSLink ( objv [ 1 ], objv [ 2 ], TCL_CREATE_HARD_LINK ) ) {
       return TCL_OK ;
     }
@@ -1452,7 +1446,7 @@ static int objcmd_fs_link ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_fs_symlink ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+  if ( 2 < objc ) {
     if ( Tcl_FSLink ( objv [ 1 ], objv [ 2 ], TCL_CREATE_SYMBOLIC_LINK ) ) {
       return TCL_OK ;
     }
@@ -1924,7 +1918,7 @@ static int objcmd_getpgid ( ClientData cd, Tcl_Interp * const T,
 {
   pid_t p = 0 ;
 
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     int i = 0 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
@@ -1950,7 +1944,7 @@ static int objcmd_getsid ( ClientData cd, Tcl_Interp * const T,
 {
   pid_t p = 0 ;
 
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     int i = 0 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
@@ -2237,7 +2231,7 @@ static int objcmd_setpgid ( ClientData cd, Tcl_Interp * const T,
   int i = 0 ;
   pid_t p = 0, pg = 0 ;
 
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     i = 0 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) != TCL_OK ) {
@@ -2248,7 +2242,7 @@ static int objcmd_setpgid ( ClientData cd, Tcl_Interp * const T,
     p = (pid_t) i ;
   }
 
-  if ( 2 < objc && NULL != objv [ 2 ] ) {
+  if ( 2 < objc ) {
     i = 0 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ 2 ], & i ) != TCL_OK ) {
@@ -2513,7 +2507,7 @@ static int objcmd_nice ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_msleep ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     int i = -1 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 < i ) {
@@ -2532,7 +2526,7 @@ static int objcmd_msleep ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_sleep ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     int i = -1 ;
 
     if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK && 0 < i ) {
@@ -2658,7 +2652,7 @@ static int objcmd_chdir ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_chroot ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 1 < objc && NULL != objv [ 1 ] ) {
+  if ( 1 < objc ) {
     int i = -1 ;
     const char * const path = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
 
@@ -2779,7 +2773,7 @@ static int objcmd_setrlimit ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_rename ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+  if ( 2 < objc ) {
     int i = -1, j = -1 ;
     const char * const src = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
     const char * const dest = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
@@ -2799,7 +2793,7 @@ static int objcmd_rename ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_link ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+  if ( 2 < objc ) {
     int i = -1, j = -1 ;
     const char * const src = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
     const char * const dest = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
@@ -2819,7 +2813,7 @@ static int objcmd_link ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_symlink ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc && NULL != objv [ 1 ] && NULL != objv [ 2 ] ) {
+  if ( 2 < objc ) {
     int i = -1, j = -1 ;
     const char * const src = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
     const char * const dest = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
