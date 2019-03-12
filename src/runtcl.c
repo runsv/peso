@@ -6,6 +6,7 @@
   Look up relevant file + unix functions in the OCaml stdlib
   SysV IPC: msgqueue functions
   Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...}
+    add getmntent(3) based function that searches in a given mtab file
   Ensembles fs + x
 
 strcmds:
@@ -579,6 +580,53 @@ static int objcmd_umount ( ClientData cd, Tcl_Interp * const T,
 static int objcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
+  return TCL_ERROR ;
+}
+
+static int objcmd_getmntent_fstype ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 2 < objc ) {
+    int i = -1, j = -1 ;
+    const char * const mtab = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+    const char * const fstype = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
+
+    if ( ( 0 < i ) && ( 0 < j ) && mtab && fstype && * mtab && * fstype ) {
+      FILE * const fp = setmntent ( mtab, "r" ) ;
+
+      if ( fp ) {
+        const char * t = NULL ;
+        struct mntent * mep = NULL ;
+        Tcl_Obj * const o = Tcl_GetObjResult ( T ) ;
+
+        Tcl_SetListObj ( o, -1, NULL ) ;
+
+	while ( NULL != ( mep = getmntent ( fp ) ) ) {
+          t = mep -> mnt_type ;
+
+          if ( t && * t && strcmp ( fstype, t ) ) {
+            if ( Tcl_ListObjAppendElement ( T, o,
+              Tcl_NewStringObj ( mep -> mnt_dir, -1 ) ) != TCL_OK )
+            {
+              (void) endmntent ( fp ) ;
+              Tcl_AddErrorInfo ( T, "could not append mount point to result list" ) ;
+              return TCL_ERROR ;
+            }
+          }
+        }
+
+        (void) endmntent ( fp ) ;
+        return TCL_OK ;
+      }
+
+      return psx_err ( T, errno, "setmntent" ) ;
+    }
+
+    Tcl_AddErrorInfo ( T, "file name and fs type string args required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -3759,6 +3807,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::psyncfs", objcmd_psyncfs, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umount", objcmd_umount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_umount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::getmntent_fstype", objcmd_getmntent_fstype, NULL, NULL ) ;
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
   (void) Tcl_CreateObjCommand ( T, "::ux::powercycle", objcmd_powercycle, NULL, NULL ) ;
