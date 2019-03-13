@@ -148,6 +148,25 @@ static int close_fd ( const int fd )
   return -1 ;
 }
 
+/* helper function to create/empty (truncate to size zero) a given file */
+static int clobber ( const char * const path, int f, mode_t m )
+{
+  int i = -1 ;
+
+  m |= 000600 ;
+  m &= 007777 ;
+  f |= O_WRONLY | O_TRUNC | O_CREAT | O_NOCTTY | O_CLOEXEC ;
+  i = open ( path, f, m ) ;
+
+  if ( 0 <= i ) {
+    int r = fchmod ( i, m ) ;
+    r += close_fd ( i ) ;
+    return r ;
+  }
+
+  return -1 ;
+}
+
 /* helper function to propagate a posix error back to the calling Tcl code */
 static int psx_err ( Tcl_Interp * const T, const int en, const char * const msg )
 {
