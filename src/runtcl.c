@@ -3343,69 +3343,6 @@ static int strcmd_pivot_root ( ClientData cd, Tcl_Interp * const T,
 #endif
 }
 
-static int strcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
-  const int argc, const char ** argv )
-{
-  if ( 1 < argc ) {
-    const char * path = argv [ 1 ] ;
-
-    if ( ! ( path && * path ) ) {
-      Tcl_AddErrorInfo ( T, "empty path arg" ) ;
-      return TCL_ERROR ;
-    } else if ( 2 == argc ) {
-      if ( umount ( path ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T,
-          "chroot ", argv [ 1 ], " failed: ",
-          Tcl_PosixError ( T ), (char *) NULL ) ;
-      } else { return TCL_OK ; }
-    } else if ( 2 < argc ) {
-      char what = 0 ;
-      int i, f = 0 ;
-      const char * str = NULL ;
-
-      for ( i = 2 ; argc > i ; ++ i ) {
-        str = argv [ i ] ;
-
-        if ( str && * str ) {
-          what = * str ;
-
-	  if ( '-' == what ) { what = str [ 1 ] ; }
-
-          switch ( what ) {
-            case 'd' :
-            case 'D' :
-              f |= MNT_DETACH ;
-              break ;
-            case 'e' :
-            case 'E' :
-            case 'x' :
-            case 'X' :
-              f |= MNT_EXPIRE ;
-              break ;
-            case 'f' :
-            case 'F' :
-              f |= MNT_FORCE ;
-              break ;
-            case 'n' :
-            case 'N' :
-              f |= UMOUNT_NOFOLLOW ;
-              break ;
-          }
-        }
-      } /* end for */
-
-      if ( umount2 ( path, f ) ) {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T, "umount2 ", path, " failed: ",
-        Tcl_PosixError ( T ), (char *) NULL ) ;
-      } else { return TCL_OK ; }
-    }
-  }
-
-  return TCL_ERROR ;
-}
-
 static int strcmd_make_files ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
@@ -3800,7 +3737,6 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateCommand ( T, "::ux::execlp", strcmd_execlp, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::execlp0", strcmd_execlp0, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::pivot_root", strcmd_pivot_root, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::sumount2", strcmd_umount2, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
 
