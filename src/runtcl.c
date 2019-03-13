@@ -3341,7 +3341,7 @@ static int objcmd_fclobber ( ClientData cd, Tcl_Interp * const T,
       m |= 000600 ;
       m &= 007777 ;
     } else {
-      Tcl_AddErrorInfo ( T, "first arg must be integer mode" ) ;
+      Tcl_AddErrorInfo ( T, "first arg must be integer permission mode" ) ;
       return TCL_ERROR ;
     }
 
@@ -3368,115 +3368,125 @@ static int objcmd_fclobber ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mknod_file ( ClientData cd, Tcl_Interp * const T,
+/* helper function that calls mknod(2) */
+static int aux_mknod ( const mode_t mo, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
-    int i = 0, j = 0 ;
-    mode_t m = 00600 | S_IFREG ;
-    const char * str = NULL ;
+    int j, i = -1 ;
+    mode_t m = 000600 | mo ;
+    const char * path = NULL ;
 
-    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) ) {
-      i &= 000777 ;
-      m = i ? i : 00600 ;
-      m |= 000600 | S_IFREG ;
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK ) {
+      m |= 007777 & i ;
+      m |= 000600 ;
     } else {
-      Tcl_AddErrorInfo ( T, "first arg must be integer" ) ;
+      Tcl_AddErrorInfo ( T, "first arg must be integer permission mode" ) ;
       return TCL_ERROR ;
     }
 
     for ( i = 2 ; objc > i ; ++ i ) {
-      j = -3 ;
-      str = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
-      if ( ( 0 < j ) && str && * str ) {
-        if ( mknod ( str, 00600 | S_IFREG | m, 0 ) ) {
+      if ( ( 0 < j ) && path && * path ) {
+        if ( mknod ( path, 000600 | mo | m, 0 ) ) {
           return psx_err ( T, errno, "mknod" ) ;
         }
       } else {
         Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
       }
-    } /* end for */
+    }
 
-    if ( str && * str ) { return TCL_OK ; }
+    return TCL_OK ;
   }
 
+  Tcl_WrongNumArgs ( T, 1, objv, "mode file [file ...]" ) ;
   return TCL_ERROR ;
+}
+
+/* helper function that calls mknod(2) */
+static int aux_mknod2 ( const mode_t mo, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 4 < objc ) {
+    int j, i = -1 ;
+    unsigned int maj = 0, min = 0 ;
+    mode_t m = 000600 | mo ;
+    const char * path = NULL ;
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK ) {
+      m |= 007777 & i ;
+      m |= 000600 ;
+    } else {
+      Tcl_AddErrorInfo ( T, "first arg must be integer permission mode" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 2 ], & i ) == TCL_OK && 0 <= i ) {
+      maj = i ;
+    } else {
+      Tcl_AddErrorInfo ( T, "second arg must be non negative integer device major id" ) ;
+      return TCL_ERROR ;
+    }
+
+    if ( Tcl_GetIntFromObj ( T, objv [ 3 ], & i ) == TCL_OK && 0 <= i ) {
+      min = i ;
+    } else {
+      Tcl_AddErrorInfo ( T, "third arg must be non negative integer device minor id" ) ;
+      return TCL_ERROR ;
+    }
+
+    for ( i = 4 ; objc > i ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( mknod ( path, 000600 | mo | m, makedev( maj, min ) ) ) {
+          return psx_err ( T, errno, "mknod" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "mode major minor dev [dev ...]" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_mknod_regf ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return aux_mknod ( 000600 | S_IFREG, T, objc, objv ) ;
 }
 
 static int objcmd_mknod_fifo ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc ) {
-    int i = 0, j = 0 ;
-    mode_t m = 00600 | S_IFIFO ;
-    const char * str = NULL ;
-
-    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) ) {
-      i &= 000777 ;
-      m = i ? i : 00600 ;
-      m |= 000600 | S_IFIFO ;
-    } else {
-      Tcl_AddErrorInfo ( T, "first arg must be integer" ) ;
-      return TCL_ERROR ;
-    }
-
-    for ( i = 2 ; objc > i ; ++ i ) {
-      j = -1 ;
-      str = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
-
-      if ( ( 0 < j ) && str && * str ) {
-        if ( mknod ( str, 00600 | S_IFIFO | m, 0 ) ) {
-          return psx_err ( T, errno, "mknod" ) ;
-        }
-      } else {
-        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
-        return TCL_ERROR ;
-      }
-    }
-
-    if ( str && * str ) { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
+  return aux_mknod ( 000600 | S_IFIFO, T, objc, objv ) ;
 }
 
 static int objcmd_mksock ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  if ( 2 < objc ) {
-    int i = 0, j = 0 ;
-    mode_t m = 00600 | S_IFSOCK ;
-    const char * str = NULL ;
+  return aux_mknod ( 000600 | S_IFSOCK, T, objc, objv ) ;
+}
 
-    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) ) {
-      i &= 000777 ;
-      m = i ? i : 00600 ;
-      m |= 000600 | S_IFSOCK ;
-    } else {
-      Tcl_AddErrorInfo ( T, "first arg must be integer" ) ;
-      return TCL_ERROR ;
-    }
+static int objcmd_mkbdev ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return aux_mknod2 ( 000600 | S_IFBLK, T, objc, objv ) ;
+}
 
-    for ( i = 2 ; objc > i ; ++ i ) {
-      j = -1 ;
-      str = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
-
-      if ( ( 0 < j ) && str && * str ) {
-        if ( mknod ( str, 00600 | S_IFSOCK | m, 0 ) ) {
-          return psx_err ( T, errno, "mknod" ) ;
-        }
-      } else {
-        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
-        return TCL_ERROR ;
-      }
-    }
-
-    if ( str && * str ) { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
+static int objcmd_mkcdev ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return aux_mknod2 ( 000600 | S_IFCHR, T, objc, objv ) ;
 }
 
 /* binding for the truncate(2) syscall */
@@ -3728,9 +3738,17 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::clobber_file", objcmd_fclobber, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mkdir", objcmd_mkdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mkfifo", objcmd_mkfifo, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknod_file, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mkregf", objcmd_mknod_regf, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknod_regf, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknod_file", objcmd_mknod_regf, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfifo", objcmd_mknod_fifo, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknod_fifo", objcmd_mknod_fifo, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mksock", objcmd_mksock, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknod_sock", objcmd_mksock, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mkbdev", objcmd_mkbdev, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknod_bdev", objcmd_mkbdev, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mkcdev", objcmd_mkcdev, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknod_cdev", objcmd_mkcdev, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::truncate", objcmd_truncate, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::reboot", objcmd_reboot, NULL, NULL ) ;
