@@ -149,7 +149,7 @@ static int close_fd ( const int fd )
 }
 
 /* helper function to create/empty (truncate to size zero) a given file */
-static int clobber ( const char * const path, int f, mode_t m )
+static int fclobber ( const char * const path, int f, mode_t m )
 {
   int i = -1 ;
 
@@ -3416,44 +3416,43 @@ static int strcmd_make_sockets ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mkfile ( ClientData cd, Tcl_Interp * const T,
+static int objcmd_fclobber ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
-    int i = 0, j = 0 ;
-    mode_t m = 00600 ;
-    const char * str = NULL ;
+    int j, i = -1 ;
+    mode_t m = 000600 ;
+    const char * path = NULL ;
 
-    if ( TCL_OK == Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) ) {
-      i &= 007777 ;
-      m = i ? i : 00600 ;
-      m |= 00600 ;
+    if ( Tcl_GetIntFromObj ( T, objv [ 1 ], & i ) == TCL_OK ) {
+      m |= 007777 & i ;
+      m |= 000600 ;
+      m &= 007777 ;
     } else {
-      Tcl_AddErrorInfo ( T, "first arg must be integer" ) ;
+      Tcl_AddErrorInfo ( T, "first arg must be integer mode" ) ;
       return TCL_ERROR ;
     }
 
     for ( i = 2 ; objc > i ; ++ i ) {
-      j = -3 ;
-      str = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
-      if ( ( 0 < j ) && str && * str ) {
-        j = open ( str, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 00600 | m ) ;
-
-        if ( 0 > j ) {
-          return psx_err ( T, errno, "open" ) ;
-        } else {
-          (void) close_fd ( j ) ;
+      if ( ( 0 < j ) && path && * path ) {
+        if ( fclobber ( path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC,
+          000600 | m ) )
+        {
+          return psx_err ( T, errno, "fclobber" ) ;
         }
       } else {
         Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
       }
-    } /* end for */
+    }
 
-    if ( str && * str ) { return TCL_OK ; }
+    return TCL_OK ;
   }
 
+  Tcl_WrongNumArgs ( T, 1, objv, "mode file [file ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -3822,7 +3821,9 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::unlink", objcmd_unlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::rmdir", objcmd_rmdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::remove", objcmd_remove, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::mkfile", objcmd_mkfile, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::fclobber", objcmd_fclobber, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::clobber", objcmd_fclobber, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::clobber_file", objcmd_fclobber, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mkdir", objcmd_mkdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mkfifo", objcmd_mkfifo, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknfile, NULL, NULL ) ;
@@ -3848,6 +3849,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::cad_off", objcmd_cad_off, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::syncfs", objcmd_syncfs, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::psyncfs", objcmd_psyncfs, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mount", objcmd_mount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umount", objcmd_umount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_umount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::force_umount", objcmd_force_umount, NULL, NULL ) ;
