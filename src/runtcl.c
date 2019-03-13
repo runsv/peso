@@ -712,6 +712,35 @@ static int objcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
+/* binding for the Linux pivot_root(2) syscall */
+static int objcmd_pivot_root ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+#if defined (__GLIBC__) && defined (_GNU_SOURCE)
+  if ( 2 < objc ) {
+    int i = -1, j = -1 ;
+    const char * const dir = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+    const char * const dir2 = Tcl_GetStringFromObj ( objv [ 2 ], & j ) ;
+
+    if ( ( 0 < i ) && ( 0 < j ) && dir && dir2 && * dir && * dir2 ) {
+      if ( chdir ( dir ) ) { return psx_err ( T, errno, "chdir" ) ; }
+
+      if ( chroot ( dir ) ) { return psx_err ( T, errno, "chroot" ) ; }
+
+      return res_zero ( T, "pivot_root", syscall ( SYS_pivot_root, dir, dir2 ) ) ;
+    }
+
+    Tcl_AddErrorInfo ( T, "2 directory names required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "new_root put_old" ) ;
+#else
+  Tcl_AddErrorInfo ( "libc not supported" ) ;
+#endif
+  return TCL_ERROR ;
+}
+
 static int objcmd_getmntent_fstype ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3280,69 +3309,6 @@ static int strcmd_vfork_and_execl ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-/*
-static int strcmd_chdir ( ClientData cd, Tcl_Interp * T,
-  const int argc, const char ** argv )
-{
-  if ( ( 1 < argc ) && argv [ 1 ] && argv [ 1 ][ 0 ] ) {
-    if ( chdir ( argv [ 1 ] ) ) {
-      Tcl_SetErrno ( errno ) ;
-      Tcl_AppendResult ( T,
-        "chdir ", argv [ 1 ], " failed: ",
-        Tcl_PosixError ( T ), (char *) NULL ) ;
-    } else { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
-}
-
-static int strcmd_chroot ( ClientData cd, Tcl_Interp * T,
-  const int argc, const char ** argv )
-{
-  if ( ( 1 < argc ) && argv [ 1 ] && argv [ 1 ][ 0 ] ) {
-    if ( chroot ( argv [ 1 ] ) ) {
-      Tcl_SetErrno ( errno ) ;
-      Tcl_AppendResult ( T, argv [ 0 ],
-        ": chroot ", argv [ 1 ], " failed: ",
-        Tcl_PosixError ( T ), (char *) NULL ) ;
-    } else { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
-}
-*/
-
-static int strcmd_pivot_root ( ClientData cd, Tcl_Interp * const T,
-  const int argc, const char ** argv )
-{
-#if defined (OSLinux)
-  if ( 2 < argc ) {
-    const char * pn = argv [ 1 ] ;
-    const char * po = argv [ 2 ] ;
-
-    if ( pn && po && * pn && * po ) {
-      if (
-#  if defined (__GLIBC__) && defined (_GNU_SOURCE)
-        syscall ( SYS_pivot_root, pn, po )
-#  else
-        0
-#  endif
-      )
-      {
-        Tcl_SetErrno ( errno ) ;
-        Tcl_AppendResult ( T, argv [ 0 ],
-          ": pivot_root ", pn, " ", po, " failed: ",
-          Tcl_PosixError ( T ), (char *) NULL ) ;
-      } else { return TCL_OK ; }
-    }
-  }
-
-  return TCL_ERROR ;
-#else
-  return TCL_OK ;
-#endif
-}
-
 static int strcmd_make_files ( ClientData cd, Tcl_Interp * const T,
   const int argc, const char ** argv )
 {
@@ -3736,7 +3702,6 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateCommand ( T, "::ux::execl0", strcmd_execl0, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::execlp", strcmd_execlp, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::execlp0", strcmd_execlp0, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::pivot_root", strcmd_pivot_root, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
   (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
 
@@ -3869,6 +3834,8 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::force_umount", objcmd_force_umount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::force_unmount", objcmd_force_umount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umount2", objcmd_umount2, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::unmount2", objcmd_umount2, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::pivot_root", objcmd_pivot_root, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getmntent_fstype", objcmd_getmntent_fstype, NULL, NULL ) ;
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
