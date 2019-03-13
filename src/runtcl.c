@@ -3328,94 +3328,6 @@ static int strcmd_vfork_and_execl ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-static int strcmd_make_files ( ClientData cd, Tcl_Interp * const T,
-  const int argc, const char ** argv )
-{
-  if ( 1 < argc ) {
-    int i = 1 ;
-    mode_t m = 00600 | S_IFREG ;
-    const char * str = NULL ;
-
-    if ( 3 < argc && '-' == argv [ 1 ][ 0 ] && 'm' == argv [ 1 ][ 1 ] ) {
-      str = argv [ 2 ] ;
-
-      if ( str && * str && isdigit ( * str ) ) {
-        if ( ( TCL_OK == Tcl_GetInt ( T, str, & i ) ) && ( 007777 & i ) ) {
-          m = 00600 | S_IFREG | ( 007777 & i ) ;
-          i = 3 ;
-        } else {
-          Tcl_AddErrorInfo ( T, "integer string expected" ) ;
-          return TCL_ERROR ;
-        }
-      } else if ( str && * str ) { i = 2 ; }
-      else {
-        Tcl_AddErrorInfo ( T, "empty arg" ) ;
-        return TCL_ERROR ;
-      }
-
-      str = NULL ;
-    }
-
-    for ( ; argc > i ; ++ i ) {
-      str = argv [ i ] ;
-
-      if ( str && * str ) {
-        if ( mknod ( str, 00600 | S_IFREG | m, 0 ) ) {
-          return psx_err ( T, errno, "mknod" ) ;
-        }
-      }
-    }
-
-    if ( str && * str ) { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
-}
-
-static int strcmd_make_sockets ( ClientData cd, Tcl_Interp * const T,
-  const int argc, const char ** argv )
-{
-  if ( 1 < argc ) {
-    int i = 1 ;
-    mode_t m = 00600 | S_IFSOCK ;
-    const char * str = NULL ;
-
-    if ( 3 < argc && '-' == argv [ 1 ][ 0 ] && 'm' == argv [ 1 ][ 1 ] ) {
-      str = argv [ 2 ] ;
-
-      if ( str && * str && isdigit ( * str ) ) {
-        if ( ( TCL_OK == Tcl_GetInt ( T, str, & i ) ) && ( 000777 & i ) ) {
-          m = 00600 | S_IFSOCK | ( 000777 & i ) ;
-          i = 3 ;
-        } else {
-          Tcl_AddErrorInfo ( T, "integer string expected" ) ;
-          return TCL_ERROR ;
-        }
-      } else if ( str && * str ) { i = 2 ; }
-      else {
-        Tcl_AddErrorInfo ( T, "empty arg" ) ;
-        return TCL_ERROR ;
-      }
-
-      str = NULL ;
-    }
-
-    for ( ; argc > i ; ++ i ) {
-      str = argv [ i ] ;
-
-      if ( str && * str ) {
-        if ( mknod ( str, 00600 | S_IFSOCK | m, 0 ) ) {
-          return psx_err ( T, errno, "mknod" ) ;
-        }
-      }
-    }
-
-    if ( str && * str ) { return TCL_OK ; }
-  }
-
-  return TCL_ERROR ;
-}
-
 static int objcmd_fclobber ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3456,7 +3368,7 @@ static int objcmd_fclobber ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mknfile ( ClientData cd, Tcl_Interp * const T,
+static int objcmd_mknod_file ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -3493,7 +3405,7 @@ static int objcmd_mknfile ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * const T,
+static int objcmd_mknod_fifo ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 2 < objc ) {
@@ -3511,7 +3423,7 @@ static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * const T,
     }
 
     for ( i = 2 ; objc > i ; ++ i ) {
-      j = -3 ;
+      j = -1 ;
       str = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
       if ( ( 0 < j ) && str && * str ) {
@@ -3522,7 +3434,7 @@ static int objcmd_mknfifo ( ClientData cd, Tcl_Interp * const T,
         Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
       }
-    } /* end for */
+    }
 
     if ( str && * str ) { return TCL_OK ; }
   }
@@ -3548,7 +3460,7 @@ static int objcmd_mksock ( ClientData cd, Tcl_Interp * const T,
     }
 
     for ( i = 2 ; objc > i ; ++ i ) {
-      j = -3 ;
+      j = -1 ;
       str = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
       if ( ( 0 < j ) && str && * str ) {
@@ -3559,7 +3471,7 @@ static int objcmd_mksock ( ClientData cd, Tcl_Interp * const T,
         Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
       }
-    } /* end for */
+    }
 
     if ( str && * str ) { return TCL_OK ; }
   }
@@ -3713,17 +3625,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::fs::is_h", objcmd_fs_is_L, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnr", objcmd_fs_is_fnr, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_fnrx", objcmd_fs_is_fnrx, NULL, NULL ) ;
-
-  /* add new string commands */
-  (void) Tcl_CreateCommand ( T, "::ux::system", strcmd_system, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::execl", strcmd_execl, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::execl0", strcmd_execl0, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::execlp", strcmd_execlp, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::execlp0", strcmd_execlp0, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::make_files", strcmd_make_files, NULL, NULL ) ;
-  (void) Tcl_CreateCommand ( T, "::ux::make_sockets", strcmd_make_sockets, NULL, NULL ) ;
-
-  /* add new object commands */
+  /* add other object commands */
   (void) Tcl_CreateObjCommand ( T, "::ux::get_errno", objcmd_get_errno, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::bit_neg_int", objcmd_bit_neg_int, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::bitnegint", objcmd_bit_neg_int, NULL, NULL ) ;
@@ -3826,8 +3728,8 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::clobber_file", objcmd_fclobber, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mkdir", objcmd_mkdir, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mkfifo", objcmd_mkfifo, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknfile, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::mknfifo", objcmd_mknfifo, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknfile", objcmd_mknod_file, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mknfifo", objcmd_mknod_fifo, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mksock", objcmd_mksock, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::truncate", objcmd_truncate, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
@@ -3874,6 +3776,15 @@ int Tcl_AppInit ( Tcl_Interp * const T )
 #elif defined (OShpux)
 #elif defined (OSsolaris) || defined (OSsunos5)
 #endif
+
+  /* add some new string commands for cases where using the old string based
+   * C API is easier
+   */
+  (void) Tcl_CreateCommand ( T, "::ux::system", strcmd_system, NULL, NULL ) ;
+  (void) Tcl_CreateCommand ( T, "::ux::execl", strcmd_execl, NULL, NULL ) ;
+  (void) Tcl_CreateCommand ( T, "::ux::execl0", strcmd_execl0, NULL, NULL ) ;
+  (void) Tcl_CreateCommand ( T, "::ux::execlp", strcmd_execlp, NULL, NULL ) ;
+  (void) Tcl_CreateCommand ( T, "::ux::execlp0", strcmd_execlp0, NULL, NULL ) ;
 
 #if 0
   nsp = Tcl_FindNamespace ( T, "::fs", NULL, TCL_GLOBAL_ONLY ) ;
