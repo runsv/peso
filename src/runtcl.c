@@ -456,8 +456,8 @@ static int objcmd_mount ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   int on = 1, i = objc ;
-  int f_bind, f_nodev, f_noexec, f_nosuid, f_rdonly, f_rec ;
-  long int f = 0 ;
+  /* boolean flag variables */
+  int f_bind, f_dirsync, f_move, f_noatime, f_nodev, f_nodiratime, f_noexec, f_nosuid, f_private, f_rdonly, f_rec, f_remount, f_shared, f_slave, f_strictatime, f_sync, f_unbind ;
   char * src = NULL ;
   char * dest = NULL ;
   char * fs = NULL ;
@@ -465,28 +465,17 @@ static int objcmd_mount ( ClientData cd, Tcl_Interp * const T,
   Tcl_ArgvInfo aiv [ 8 ] ;
 
   /*
-  if ( strstr ( str, "noatime" ) ) { f |= MS_NOATIME ; }
-  else if ( strstr ( str, "nodiratime" ) ) { f |= MS_NODIRATIME ; }
-  else if ( strstr ( str, "unbindab" ) ) { f |= MS_UNBINDABLE ; }
-  else if ( strstr ( str, "remount" ) ) { f |= MS_REMOUNT ; }
-  else if ( strstr ( str, "dirsync" ) ) { f |= MS_DIRSYNC ; }
-  else if ( strstr ( str, "lazytime" ) ) { f |= MS_LAZYTIME ; }
-  else if ( strstr ( str, "mandlock" ) ) { f |= MS_MANDLOCK ; }
-  else if ( strstr ( str, "move" ) ) { f |= MS_MOVE ; }
-  else if ( strstr ( str, "privat" ) ) { f |= MS_PRIVATE ; }
-  else if ( strstr ( str, "relatime" ) ) { f |= MS_RELATIME ; }
-  else if ( strstr ( str, "share" ) ) { f |= MS_SHARED ; }
-  else if ( strstr ( str, "slave" ) ) { f |= MS_SLAVE ; }
-  else if ( strstr ( str, "silent" ) ) { f |= MS_SILENT ; }
-  else if ( strstr ( str, "strictatime" ) ) { f |= MS_STRICTATIME ; }
-  else if ( strstr ( str, "sync" ) ) { f |= MS_SYNCHRONOUS ; }
+  if ( strstr ( str, "lazytime" ) ) { f |= MS_LAZYTIME ; }
+  if ( strstr ( str, "mandlock" ) ) { f |= MS_MANDLOCK ; }
+  if ( strstr ( str, "relatime" ) ) { f |= MS_RELATIME ; }
+  if ( strstr ( str, "silent" ) ) { f |= MS_SILENT ; }
   */
   /* default values for boolean option variables */
-  f_bind = f_nodev = f_noexec = f_nosuid = f_rdonly = f_rec = 0 ;
-
+  f_bind = f_dirsync = f_move = f_noatime = f_nodev = f_nodiratime = f_noexec = f_nosuid = f_private = f_rdonly = f_rec = f_remount = f_shared = f_slave = f_strictatime = f_sync = f_unbind = 0 ;
   /* zero out the arg info option array before use */
+  /*
   (void) memset ( aiv, 0, sizeof ( aiv ) ) ;
-
+  */
   /* set up the array of known/allowed options */
   /* help text option */
   aiv [ 0 ] . type = TCL_ARGV_HELP ;
@@ -495,47 +484,95 @@ static int objcmd_mount ( ClientData cd, Tcl_Interp * const T,
   aiv [ 1 ] . type = TCL_ARGV_STRING ;
   aiv [ 1 ] . keyStr = "-type" ;
   aiv [ 1 ] . dstPtr = fs ;
+  /* data arg */
   aiv [ 2 ] . type = TCL_ARGV_STRING ;
   aiv [ 2 ] . keyStr = "-data" ;
   aiv [ 2 ] . dstPtr = data ;
+  /* source arg */
   aiv [ 3 ] . type = TCL_ARGV_STRING ;
   aiv [ 3 ] . keyStr = "-from" ;
   aiv [ 3 ] . dstPtr = src ;
+  /* destination arg */
   aiv [ 4 ] . type = TCL_ARGV_STRING ;
   aiv [ 4 ] . keyStr = "-to" ;
   aiv [ 4 ] . dstPtr = dest ;
   /* boolean options without args */
   /* bind flag */
-  aiv [ 5 ] . type = TCL_ARGV_INT ;
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
   aiv [ 5 ] . keyStr = "-bind" ;
   aiv [ 5 ] . srcPtr = & on ;
   aiv [ 5 ] . dstPtr = & f_nodev ;
   /* nodev flag */
-  aiv [ 6 ] . type = TCL_ARGV_INT ;
+  aiv [ 6 ] . type = TCL_ARGV_CONSTANT ;
   aiv [ 6 ] . keyStr = "-nodev" ;
   aiv [ 6 ] . srcPtr = & on ;
   aiv [ 6 ] . dstPtr = & f_nodev ;
   /* noexec flag */
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
   aiv [ 6 ] . keyStr = "-noexec" ;
+  aiv [ 6 ] . srcPtr = & on ;
+  aiv [ 6 ] . dstPtr = & f_nodev ;
   /* nosuid flag */
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
   aiv [ 6 ] . keyStr = "-nosuid" ;
+  aiv [ 6 ] . srcPtr = & on ;
+  aiv [ 6 ] . dstPtr = & f_nosuid ;
+  /* r(ea)donly flag */
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
   aiv [ 6 ] . keyStr = "-rdonly" ;
+  /* rec flag */
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
   aiv [ 6 ] . keyStr = "-rec" ;
+  /* synchronous flag */
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
+  aiv [ 5 ] . keyStr = "-sync" ;
+  aiv [ 5 ] . srcPtr = & on ;
+  aiv [ 5 ] . dstPtr = & f_sync ;
+  /* unbindable flag */
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
+  aiv [ 5 ] . keyStr = "-unbindable" ;
+  aiv [ 5 ] . srcPtr = & on ;
+  aiv [ 5 ] . dstPtr = & f_unbind ;
   /* end of arg info options */
-  aiv [ 7 ] . type = TCL_ARGV_END ;
+  aiv [ 9 ] . type = TCL_ARGV_END ;
 
   if ( Tcl_ParseArgsObjv ( T, aiv, & i, objv, NULL ) == TCL_OK ) {
+    /* mount(2) flag arg bitmask variable */
+    long int f = 0 ;
+
     if ( f_bind ) { f |= MS_BIND ; }
 
+    if ( f_dirsync ) { f |= MS_DIRSYNC ; }
+
+    if ( f_move ) { f |= MS_MOVE ; }
+
+    if ( f_noatime ) { f |= MS_NOATIME ; }
+
     if ( f_nodev ) { f |= MS_NODEV ; }
+
+    if ( f_nodiratime ) { f |= MS_NODIRATIME ; }
 
     if ( f_noexec ) { f |= MS_NOEXEC ; }
 
     if ( f_nosuid ) { f |= MS_NOSUID ; }
 
+    if ( f_private ) { f |= MS_PRIVATE ; }
+
     if ( f_rdonly ) { f |= MS_RDONLY ; }
 
     if ( f_rec ) { f |= MS_REC ; }
+
+    if ( f_remount ) { f |= MS_REMOUNT ; }
+
+    if ( f_shared ) { f |= MS_SHARED ; }
+
+    if ( f_slave ) { f |= MS_SLAVE ; }
+
+    if ( f_strictatime ) { f |= MS_STRICTATIME ; }
+
+    if ( f_sync ) { f |= MS_SYNCHRONOUS ; }
+
+    if ( f_unbind ) { f |= MS_UNBINDABLE ; }
 
     if ( src && dest && fs && data && * src && * dest && * fs && * data ) {
       return res_zero ( T, "mount", mount ( src, dest, fs, f, data ) ) ;
@@ -576,10 +613,102 @@ static int objcmd_umount ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
-/* binding for the Linux umount2(2) syscall */
+/* specific binding that calls umount(2) with the MNT_FORCE flag */
+static int objcmd_force_umount ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * path = NULL ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && path && * path ) {
+        if ( umount2 ( path, MNT_FORCE ) ) {
+          return psx_err ( T, errno, "umount2" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "path to mount point required" ) ;
+        return TCL_ERROR ;
+      }
+    }
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
+  return TCL_ERROR ;
+}
+
+/* more general binding for the Linux umount2(2) syscall */
 static int objcmd_umount2 ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
+  int on = 1, i = objc ;
+  /* boolean flag variables */
+  int f_detach, f_expire, f_force, f_nofollow ;
+  char * path = NULL ;
+  Tcl_ArgvInfo aiv [ 7 ] ;
+
+  /* default values for boolean option variables */
+  f_detach = f_expire = f_force = f_nofollow = 0 ;
+  /* zero out the arg info option array before use */
+  /*
+  (void) memset ( aiv, 0, sizeof ( aiv ) ) ;
+  */
+  /* set up the array of known/allowed options */
+  /* help text option */
+  aiv [ 0 ] . type = TCL_ARGV_HELP ;
+  aiv [ 0 ] . helpStr = "[-d] [-e] [-f] [-n] -p dir" ;
+  /* options that take a string arg */
+  /* mount point dir path arg */
+  aiv [ 1 ] . type = TCL_ARGV_STRING ;
+  aiv [ 1 ] . keyStr = "-p" ;
+  aiv [ 1 ] . dstPtr = path ;
+  /* boolean options without args */
+  /* detach flag */
+  aiv [ 2 ] . type = TCL_ARGV_CONSTANT ;
+  aiv [ 2 ] . keyStr = "-d" ;
+  aiv [ 2 ] . srcPtr = & on ;
+  aiv [ 2 ] . dstPtr = & f_detach ;
+  /* expire flag */
+  aiv [ 3 ] . type = TCL_ARGV_CONSTANT ;
+  aiv [ 3 ] . keyStr = "-e" ;
+  aiv [ 3 ] . srcPtr = & on ;
+  aiv [ 3 ] . dstPtr = & f_expire ;
+  /* force flag */
+  aiv [ 4 ] . type = TCL_ARGV_CONSTANT ;
+  aiv [ 4 ] . keyStr = "-f" ;
+  aiv [ 4 ] . srcPtr = & on ;
+  aiv [ 4 ] . dstPtr = & f_force ;
+  /* nollow flag */
+  aiv [ 5 ] . type = TCL_ARGV_CONSTANT ;
+  aiv [ 5 ] . keyStr = "-n" ;
+  aiv [ 5 ] . srcPtr = & on ;
+  aiv [ 5 ] . dstPtr = & f_nofollow ;
+  /* end of arg info options */
+  aiv [ 6 ] . type = TCL_ARGV_END ;
+
+  if ( Tcl_ParseArgsObjv ( T, aiv, & i, objv, NULL ) == TCL_OK ) {
+    /* reuse "i" as umount2(2) flag arg bitmask variable */
+    i = 0 ;
+
+    if ( f_detach ) { i |= MNT_DETACH ; }
+
+    if ( f_expire ) { i |= MNT_EXPIRE ; }
+
+    if ( f_force ) { i |= MNT_FORCE ; }
+
+    if ( f_nofollow ) { i |= UMOUNT_NOFOLLOW ; }
+
+    if ( path && * path ) {
+      return res_zero ( T, "umount2", umount2 ( path, i ) ) ;
+    }
+
+    Tcl_AddErrorInfo ( T, "path to mount point required" ) ;
+  }
+
   return TCL_ERROR ;
 }
 
@@ -3801,6 +3930,9 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::psyncfs", objcmd_psyncfs, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::umount", objcmd_umount, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unmount", objcmd_umount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::force_umount", objcmd_force_umount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::force_unmount", objcmd_force_umount, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::umount2", objcmd_umount2, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getmntent_fstype", objcmd_getmntent_fstype, NULL, NULL ) ;
 #elif defined (OSdragonfly)
 #elif defined (OSfreebsd)
