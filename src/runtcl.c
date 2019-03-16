@@ -3134,12 +3134,10 @@ static int objcmd_unlink ( ClientData cd, Tcl_Interp * const T,
           Tcl_AppendResult ( T, "unlink \"", path, "\" failed: ",
             Tcl_PosixError ( T ), (char *) NULL ) ;
           return TCL_ERROR ;
-          break ;
         }
       } else {
         Tcl_AddErrorInfo ( T, "empty path" ) ;
         return TCL_ERROR ;
-        break ;
       }
     }
 
@@ -3154,23 +3152,20 @@ static int objcmd_rmdir ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
-    int i ;
+    int i, j ;
+    const char * path = NULL ;
 
-    for ( i = 2 ; objc > i ; ++ i ) {
-      const char * path = Tcl_GetStringFromObj ( objv [ i ], NULL ) ;
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
-      if ( path && * path ) {
+      if ( ( 0 < j ) && path && * path ) {
         if ( rmdir ( path ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "rmdir \"", path, "\" failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "rmdir" ) ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "empty path" ) ;
+        Tcl_AddErrorInfo ( T, "illegal directory name" ) ;
         return TCL_ERROR ;
-        break ;
       }
     }
 
