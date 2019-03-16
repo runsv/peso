@@ -3185,30 +3185,27 @@ static int objcmd_remove ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
   if ( 1 < objc ) {
-    int i ;
+    int i, j ;
+    const char * path = NULL ;
 
-    for ( i = 2 ; objc > i ; ++ i ) {
-      const char * path = Tcl_GetStringFromObj ( objv [ i ], NULL ) ;
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+      path = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
 
-      if ( path && * path ) {
+      if ( ( 0 < j ) && path && * path ) {
         if ( remove ( path ) ) {
-          Tcl_SetErrno ( errno ) ;
-          Tcl_AppendResult ( T, "remove \"", path, "\" failed: ",
-            Tcl_PosixError ( T ), (char *) NULL ) ;
-          return TCL_ERROR ;
-          break ;
+          return psx_err ( T, errno, "remove" ) ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "empty path" ) ;
+        Tcl_AddErrorInfo ( T, "illegal file name" ) ;
         return TCL_ERROR ;
-        break ;
       }
     }
 
     return TCL_OK ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, objv, "path [path ...]" ) ;
+  Tcl_WrongNumArgs ( T, 1, objv, "file [file ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -3218,10 +3215,7 @@ static int strcmd_execl ( ClientData cd, Tcl_Interp * const T,
   if ( ( 1 < argc ) && argv && argv [ 1 ] && argv [ 1 ] [ 0 ] ) {
     /* this does not return when successful */
     (void) execv ( argv [ 1 ], 1 + (char **) argv ) ;
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "execv() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "execv" ) ;
   }
 
   Tcl_AddErrorInfo ( T, "missing args" ) ;
@@ -3236,10 +3230,7 @@ static int strcmd_execl0 ( ClientData cd, Tcl_Interp * const T,
   {
     /* this does not return when successful */
     (void) execv ( argv [ 1 ], 2 + (char **) argv ) ;
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "execv() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "execv" ) ;
   }
 
   Tcl_AddErrorInfo ( T, "missing args" ) ;
@@ -3252,10 +3243,7 @@ static int strcmd_execlp ( ClientData cd, Tcl_Interp * const T,
   if ( ( 1 < argc ) && argv && argv [ 1 ] && argv [ 1 ] [ 0 ] ) {
     /* this does not return when successful */
     (void) execvp ( argv [ 1 ], 1 + (char **) argv ) ;
-    Tcl_SetErrno ( errno ) ;
-    Tcl_AddErrorInfo ( T, "execvp() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "execvp" ) ;
   }
 
   Tcl_AddErrorInfo ( T, "missing args" ) ;
@@ -3270,10 +3258,7 @@ static int strcmd_execlp0 ( ClientData cd, Tcl_Interp * const T,
   {
     /* this does not return when successful */
     (void) execvp ( argv [ 1 ], 2 + (char **) argv ) ;
-    Tcl_AddErrorInfo ( T, "execvp() failed: " ) ;
-    Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
-    Tcl_SetErrno ( errno ) ;
-    return TCL_ERROR ;
+    return psx_err ( T, errno, "execvp" ) ;
   }
 
   Tcl_AddErrorInfo ( T, "missing args" ) ;
