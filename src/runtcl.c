@@ -75,16 +75,33 @@ objcmds:
 
 /* flag bitmasks that modify the behaviour of certain functions */
 enum {
-  EXEC_ARGV0			= 0x01,
-  EXEC_PATH			= 0x02,
-  EXEC_VFORK			= 0x04,
-  EXEC_VFORK_WAITPID		= 0x08,
-  FTEST_NOFOLLOW		= 0x01,
-  FTEST_ZERO			= 0x02,
-  FTEST_NONZERO			= 0x04,
-  FSYNC_FSYNC			= 0x01,
-  FSYNC_FDATASYNC		= 0x02,
-  FSYNC_SYNCFS			= 0x04,
+  EXEC_ARGV0			= 1,
+  EXEC_PATH			= 1 << 1,
+  EXEC_VFORK			= 1 << 2,
+  EXEC_VFORK_WAITPID		= 1 << 3,
+
+  FSTAT_NOFOLLOW		= 1,
+  FSTAT_INODE			= 1 << 1,
+  FSTAT_SIZE			= 1 << 2,
+  FSTAT_NLINK			= 1 << 3,
+  FSTAT_BSIZE			= 1 << 4,
+  FSTAT_NBLOCKS			= 1 << 5,
+  FSTAT_DEVTYPE			= 1 << 6,
+  FSTAT_FSDEV			= 1 << 7,
+  FSTAT_MODE			= 1 << 8,
+  FSTAT_GID			= 1 << 9,
+  FSTAT_UID			= 1 << 10,
+  FSTAT_ATIME			= 1 << 11,
+  FSTAT_CTIME			= 1 << 12,
+  FSTAT_MTIME			= 1 << 13,
+
+  FTEST_NOFOLLOW		= 1,
+  FTEST_ZERO			= 1 << 1,
+  FTEST_NONZERO			= 1 << 2,
+
+  FSYNC_FSYNC			= 1,
+  FSYNC_FDATASYNC		= 1 << 1,
+  FSYNC_SYNCFS			= 1 << 2,
 } ;
 
 /* global vars */
@@ -95,15 +112,16 @@ static int set_rlimits ( void )
 {
   struct rlimit rlim ;
 
+  /* set struct fields to default values */
+  rlim . rlim_max = 0 ;
+  /* fill the struct with the current limit values, this call should succeed */
   (void) getrlimit ( RLIMIT_CORE, & rlim ) ;
-  rlim . rlim_cur = 0 ;
-
-  if ( 0 == geteuid () ) { rlim . rlim_max = RLIM_INFINITY ; }
-
   /* set the SOFT (!!) default upper limit of coredump sizes to zero
    * (i. e. disable coredumps). can raised again later in child/sub
    * processes as needed.
    */
+  rlim . rlim_cur = 0 ;
+
   return setrlimit ( RLIMIT_CORE, & rlim ) ;
 }
 
@@ -184,6 +202,55 @@ static int res_zero ( Tcl_Interp * const T, const char * const msg, const int re
   if ( res ) {
     const int e = errno ;
     return psx_err ( T, e, msg ) ;
+  }
+
+  return TCL_OK ;
+}
+
+/* helper function that calls the Tcl_FS(L)Stat() wrapper for the
+ * (l)stat(2) syscalls and returns the result stat struct's
+ * requested field to the caller
+ */
+static int fs_info ( Tcl_Interp * const T, Tcl_Obj * const obj,
+  const unsigned long int f )
+{
+  Tcl_StatBuf st ;
+  errno = 0 ;
+
+  if ( ( FSTAT_NOFOLLOW & f ) ? Tcl_FSLstat ( obj, & st ) : Tcl_FSStat ( obj, & st ) )
+  {
+    const int e = errno ;
+    return psx_err ( T, ( 0 < e ) ? e : 0, "FSStat" ) ;
+  }
+
+  if ( FSTAT_MODE & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetModeFromStat ( & st ) ) ;
+  } else if ( FSTAT_INODE & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSInodeFromStat ( & st ) ) ;
+  } else if ( FSTAT_BSIZE & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetBlockSizeFromStat ( & st ) ) ;
+  } else if ( FSTAT_FSDEV & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSDeviceFromStat ( & st ) ) ;
+  } else if ( FSTAT_DEVTYPE & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetDeviceTypeFromStat ( & st ) ) ;
+  } else if ( FSTAT_UID & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetUserIdFromStat ( & st ) ) ;
+  } else if ( FSTAT_GID & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetGroupIdFromStat ( & st ) ) ;
+  } else if ( FSTAT_NLINK & f ) {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetLinkCountFromStat ( & st ) ) ;
+  } else if ( FSTAT_SIZE & f ) {
+    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetSizeFromStat ( & st ) ) ;
+  } else if ( FSTAT_NBLOCKS & f ) {
+    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetBlocksFromStat ( & st ) ) ;
+  } else if ( FSTAT_ATIME & f ) {
+    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetAccessTimeFromStat ( & st ) ) ;
+  } else if ( FSTAT_CTIME & f ) {
+    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetChangeTimeFromStat ( & st ) ) ;
+  } else if ( FSTAT_MTIME & f ) {
+    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetModificationTimeFromStat ( & st ) ) ;
+  } else {
+    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSInodeFromStat ( & st ) ) ;
   }
 
   return TCL_OK ;
