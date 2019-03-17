@@ -211,49 +211,55 @@ static int res_zero ( Tcl_Interp * const T, const char * const msg, const int re
  * (l)stat(2) syscalls and returns the result stat struct's
  * requested field to the caller
  */
-static int fs_info ( Tcl_Interp * const T, Tcl_Obj * const obj,
-  const unsigned long int f )
+static int fs_info ( Tcl_Interp * const T, const int objc,
+  Tcl_Obj * const * objv, const unsigned long int f )
 {
-  Tcl_StatBuf st ;
-  errno = 0 ;
+  if ( 1 < objc ) {
+    Tcl_StatBuf st ;
+    errno = 0 ;
 
-  if ( ( FSTAT_NOFOLLOW & f ) ? Tcl_FSLstat ( obj, & st ) : Tcl_FSStat ( obj, & st ) )
-  {
-    const int e = errno ;
-    return psx_err ( T, ( 0 < e ) ? e : 0, "FSStat" ) ;
+    if ( ( FSTAT_NOFOLLOW & f ) ? Tcl_FSLstat ( objv [ 1 ], & st ) :
+      Tcl_FSStat ( objv [ 1 ], & st ) )
+    {
+      const int e = errno ;
+      return psx_err ( T, ( 0 < e ) ? e : 0, "FSStat" ) ;
+    }
+
+    if ( FSTAT_MODE & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetModeFromStat ( & st ) ) ;
+    } else if ( FSTAT_INODE & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSInodeFromStat ( & st ) ) ;
+    } else if ( FSTAT_BSIZE & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetBlockSizeFromStat ( & st ) ) ;
+    } else if ( FSTAT_FSDEV & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSDeviceFromStat ( & st ) ) ;
+    } else if ( FSTAT_DEVTYPE & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetDeviceTypeFromStat ( & st ) ) ;
+    } else if ( FSTAT_UID & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetUserIdFromStat ( & st ) ) ;
+    } else if ( FSTAT_GID & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetGroupIdFromStat ( & st ) ) ;
+    } else if ( FSTAT_NLINK & f ) {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetLinkCountFromStat ( & st ) ) ;
+    } else if ( FSTAT_SIZE & f ) {
+      Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetSizeFromStat ( & st ) ) ;
+    } else if ( FSTAT_NBLOCKS & f ) {
+      Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetBlocksFromStat ( & st ) ) ;
+    } else if ( FSTAT_ATIME & f ) {
+      Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetAccessTimeFromStat ( & st ) ) ;
+    } else if ( FSTAT_CTIME & f ) {
+      Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetChangeTimeFromStat ( & st ) ) ;
+    } else if ( FSTAT_MTIME & f ) {
+      Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetModificationTimeFromStat ( & st ) ) ;
+    } else {
+      Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSInodeFromStat ( & st ) ) ;
+    }
+
+    return TCL_OK ;
   }
 
-  if ( FSTAT_MODE & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetModeFromStat ( & st ) ) ;
-  } else if ( FSTAT_INODE & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSInodeFromStat ( & st ) ) ;
-  } else if ( FSTAT_BSIZE & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetBlockSizeFromStat ( & st ) ) ;
-  } else if ( FSTAT_FSDEV & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSDeviceFromStat ( & st ) ) ;
-  } else if ( FSTAT_DEVTYPE & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetDeviceTypeFromStat ( & st ) ) ;
-  } else if ( FSTAT_UID & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetUserIdFromStat ( & st ) ) ;
-  } else if ( FSTAT_GID & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetGroupIdFromStat ( & st ) ) ;
-  } else if ( FSTAT_NLINK & f ) {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetLinkCountFromStat ( & st ) ) ;
-  } else if ( FSTAT_SIZE & f ) {
-    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetSizeFromStat ( & st ) ) ;
-  } else if ( FSTAT_NBLOCKS & f ) {
-    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetBlocksFromStat ( & st ) ) ;
-  } else if ( FSTAT_ATIME & f ) {
-    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetAccessTimeFromStat ( & st ) ) ;
-  } else if ( FSTAT_CTIME & f ) {
-    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetChangeTimeFromStat ( & st ) ) ;
-  } else if ( FSTAT_MTIME & f ) {
-    Tcl_SetWideIntObj ( Tcl_GetObjResult ( T ), Tcl_GetModificationTimeFromStat ( & st ) ) ;
-  } else {
-    Tcl_SetIntObj ( Tcl_GetObjResult ( T ), Tcl_GetFSInodeFromStat ( & st ) ) ;
-  }
-
-  return TCL_OK ;
+  Tcl_WrongNumArgs ( T, 1, objv, "file" ) ;
+  return TCL_ERROR ;
 }
 
 static int fs_perm ( Tcl_StatBuf * const stp, mode_t m )
@@ -1739,6 +1745,16 @@ static int objcmd_fs_utime ( ClientData cd, Tcl_Interp * const T,
 
   Tcl_WrongNumArgs ( T, 1, objv, "atime mtime file [file ...]" ) ;
   return TCL_ERROR ;
+}
+
+/* (l)stat(2) a given file via FSStat/FSLstat() and return the requested
+ * information from the corresponding stat structure field
+ */
+
+static int objcmd_fs_stat_size ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return fs_info ( T, objc, objv, FSTAT_SIZE ) ;
 }
 
 static int objcmd_fs_acc_ex ( ClientData cd, Tcl_Interp * const T,
@@ -3651,7 +3667,9 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::fs::link", objcmd_fs_link, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::symlink", objcmd_fs_symlink, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::utime", objcmd_fs_utime, NULL, NULL ) ;
-  /* access(2) related */
+  /* (l)stat(2) related */
+  (void) Tcl_CreateObjCommand ( T, "::fs::stat_size", objcmd_fs_stat_size, NULL, NULL ) ;
+  /* file access rights tests using access(2) */
   (void) Tcl_CreateObjCommand ( T, "::fs::ex", objcmd_fs_acc_ex, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::exists", objcmd_fs_acc_ex, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::acc_ex", objcmd_fs_acc_ex, NULL, NULL ) ;
@@ -3662,7 +3680,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::fs::acc_rx", objcmd_fs_acc_rx, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::acc_wx", objcmd_fs_acc_wx, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::acc_rwx", objcmd_fs_acc_rwx, NULL, NULL ) ;
-  /* (l)stat(2) related */
+  /* file tests using (l)stat(2) */
   (void) Tcl_CreateObjCommand ( T, "::fs::is_f", objcmd_fs_is_f, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_d", objcmd_fs_is_d, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::fs::is_p", objcmd_fs_is_p, NULL, NULL ) ;
