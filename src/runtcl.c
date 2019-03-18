@@ -3637,6 +3637,45 @@ static int objcmd_truncate ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
+/* FIXME: first obj arg is the mode */
+static int objcmd_mkpath ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    char * path = NULL ;
+    Tcl_Obj * o = NULL ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      o = Tcl_FSGetNormalizedPath ( T, objv [ i ] ) ;
+
+      if ( o ) {
+        if ( Tcl_IsShared ( o ) ) { o = Tcl_DuplicateObj ( o ) ; }
+
+        j = -1 ;
+        path = Tcl_GetStringFromObj ( o, & j ) ;
+
+        if ( ( 0 < j ) && path && * path ) {
+          if ( mkpath ( 00755, path, j ) ) {
+            return psx_err ( T, errno, "mkdir" ) ;
+          }
+        } else {
+          Tcl_AddErrorInfo ( T, "dir name required" ) ;
+          return TCL_ERROR ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "dir name required" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "dir [dir ...]" ) ;
+  return TCL_ERROR ;
+}
+
 /* binding for the swapoff(2) syscall */
 static int objcmd_swapoff ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
@@ -3862,6 +3901,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::mkcdev", objcmd_mkcdev, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::mknod_cdev", objcmd_mkcdev, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::truncate", objcmd_truncate, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::mkpath", objcmd_mkpath, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::swapoff", objcmd_swapoff, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::reboot", objcmd_reboot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::halt", objcmd_halt, NULL, NULL ) ;
