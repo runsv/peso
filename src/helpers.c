@@ -997,9 +997,7 @@ static int mkpath ( mode_t m, char * const p, const size_t s )
         }
       }
 
-      if ( chmod ( p, m ) ) {
-        return -1 ;
-      }
+      if ( chmod ( p, m ) ) { return -1 ; }
 
       p [ i ] = c ;
     }

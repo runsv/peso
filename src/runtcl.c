@@ -185,10 +185,59 @@ static int fclobber ( const char * const path, int f, mode_t m )
   return -1 ;
 }
 
-/* helper function to propagate a posix error back to the calling Tcl code */
-static int psx_err ( Tcl_Interp * const T, const int en, const char * const msg )
+/* tries to creates a given dir with all its parent dirs
+ * (i. e. the whole path leading to that dir, hence mkpath)
+ */
+static int mkpath ( mode_t m, char * const p, const size_t s )
 {
-  Tcl_SetErrno ( en ) ;
+  if ( ( 0 < s ) && p && * p ) {
+    char c = 0 ;
+    size_t i = s - 1 ;
+
+    /* ensure some basic mode sanity */
+    m &= 007777 ;
+    m |= 000700 ;
+
+    /* remove any trailing slashes first */
+    while ( 0 < i && '/' == p [ i ] ) {
+      p [ i -- ] = '\0' ;
+    }
+
+    for ( i = 0 ; ( s > i ) && p [ i ] ; ) {
+      i += strspn ( i + p, "/" ) ;
+      i += strcspn ( i + p, "/" ) ;
+      c = p [ i ] ;
+      p [ i ] = '\0' ;
+
+      if ( mkdir ( p, m ) ) {
+        struct stat st ;
+        const int e = errno ;
+
+	if ( stat ( p, & st ) ) {
+          errno = e ;
+          return -1 ;
+        } else if ( 0 == S_ISDIR( st . st_mode ) ) {
+          errno = ENOTDIR ;
+          return -1 ;
+        }
+      }
+
+      if ( chmod ( p, m ) ) { return -1 ; }
+
+      p [ i ] = c ;
+    }
+
+    return 0 ;
+  }
+
+  errno = EINVAL ;
+  return -1 ;
+}
+
+/* helper function to propagate a posix error back to the calling Tcl code */
+static int psx_err ( Tcl_Interp * const T, const int e, const char * const msg )
+{
+  Tcl_SetErrno ( ( 0 < e ) ? e : 0 ) ;
   Tcl_AddErrorInfo ( T, msg ) ;
   Tcl_AddErrorInfo ( T, "() failed: " ) ;
   Tcl_AddErrorInfo ( T, Tcl_PosixError ( T ) ) ;
@@ -221,8 +270,7 @@ static int fs_info ( Tcl_Interp * const T, const int objc,
     if ( ( FSTAT_NOFOLLOW & f ) ? Tcl_FSLstat ( objv [ 1 ], & st ) :
       Tcl_FSStat ( objv [ 1 ], & st ) )
     {
-      const int e = errno ;
-      return psx_err ( T, ( 0 < e ) ? e : 0, "FSStat" ) ;
+      return psx_err ( T, errno, ( FSTAT_NOFOLLOW & f ) ? "FSLstat" : "FSStat" ) ;
     }
 
     if ( FSTAT_MODE & f ) {
