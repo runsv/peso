@@ -4,6 +4,9 @@
  * interpreter to run Tcl scripts
 
   Look up relevant file + unix functions in the OCaml stdlib
+  setrlimit_core( s, h ) etc
+  softlimit_core() etc
+  evtl. ulimit -S -c 0 ?
   SysV IPC: msgqueue functions
   Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...}
     add getmntent(3) based function that searches in a given mtab file
@@ -14,21 +17,19 @@ strcmds:
   syslog()
   kexec_load
   pivot_root, swapo(n,ff)
-  write (uw)tmp
   net: ifup, ifconfig, etc
 
 objcmds:
   normal:
-  alarm, execl, pgkill, (sym)link, readdir, sleep,
+  alarm, pgkill, readdir, sleep,
   system, times, wait(pid)
 
   file:
-  ch(grp,mod,own), dup, fcntl, f(un)lock, (f)stat, (f)truncate, pipe, select,
+  dup, fcntl, f(un)lock, (f)stat, (f)truncate, pipe, select,
   (read,write)_file (read, write)
 
   unistd.h :
-  mass mknod: mksock, mkfile, mkfifos, mkdev, ...
-  exec*, access, alarm
+  access, alarm
   (l)ch(mod,own), get(u,g,p(p,g),s)id, (g,s)ethost(id,name),
   (g,s)etlogin, setr(e)s(gu)id, (sym)link, ttyname
   pipe, readlink
@@ -37,10 +38,10 @@ objcmds:
   (g,s)et(rlimit,priority,rusage)
 
   signal.h :
-  kill(pg), raise
+  raise
 
   time.h :
-  nanosleep, time, (g,s)ettimeofday
+  time, (g,s)ettimeofday
 
   wait.h :
   wait((p)id)
@@ -55,7 +56,6 @@ objcmds:
   getifaddrs(3)
 
   misc:
-  utime
   creat, basename,
 
 *********************************************************************/
