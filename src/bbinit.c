@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -22,6 +23,9 @@
 
 /* default shell */
 #define SHELL		"/bin/sh"
+
+/* default hostname */
+#define HOSTNAME	"darkstar"
 
 /* path to the BusyBox binary
  * make sure it exists !!
@@ -77,6 +81,8 @@ int main ( const int argc, char ** argv )
   (void) umask ( 00022 ) ;
   (void) setup_rlimits () ;
   (void) chdir ( "/" ) ;
+  /* set a default hostname that can be changed later */
+  (void) sethostname ( HOSTNAME, strlen ( HOSTNAME ) ) ;
 
   /* execve(2) into the real BusyBox binary */
   (void) execve ( BBX, argv, Env ) ;
