@@ -4,7 +4,7 @@
  * One can use the path to this binary as init kernel parameter
  * (i. e. boot the Linux kernel with init=/path/to/bin) instead.
  * Can be used to exec into "toybox init" aswell when compiling with
- * "-DBBX=/path/to/the/toybox/bin".
+ * "-DBB=/path/to/the/toybox/bin".
  */
 
 #define _GNU_SOURCE
@@ -17,20 +17,26 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-
-/* default command search PATH */
-#define PATH		"/bin:/sbin:/usr/bin:/usr/sbin"
-
-/* default shell */
-#define SHELL		"/bin/sh"
-
-/* default hostname */
-#define HOSTNAME	"darkstar"
+#include <paths.h>
 
 /* path to the BusyBox binary
- * make sure it exists !!
+ * better make sure it exists !!
  */
-#define BBX		"/bin/busybox"
+#define BB		"/bin/busybox"
+/* default hostname */
+#define HOSTNAME	"darkstar"
+/* default shell */
+#define SHELL		"/bin/sh"
+/* default command search PATH */
+#define PATH		"/bin:/sbin:/usr/bin:/usr/sbin"
+/* default TERM value (probably "linux") */
+#define TERM		"linux"
+/* system console device (probably "/dev/console") */
+#ifdef _PATH_CONSOLE
+# define CONSOLE	_PATH_CONSOLE
+#else
+# define CONSOLE	"/dev/console"
+#endif
 
 /* default environment to use */
 static char * Env [ 6 ] = {
@@ -47,10 +53,11 @@ static void setup_env ( void )
   /* see if the kernel has already set the TERM env var for us */
   char * s = getenv ( "TERM" ) ;
   /* (re)use that one (strlen( "TERM=" ) == 5) or a default value */
-  Env [ 3 ] = ( s && * s ) ? s - 5 : "TERM=linux" ;
+  Env [ 3 ] = ( s && * s ) ? s - 5 : "TERM=" TERM ;
   /* see if the kernel has set up the CONSOLE env var for us */
   s = getenv ( "CONSOLE" ) ;
-  Env [ 4 ] = ( s && * s ) ? s - 8 : "CONSOLE=/dev/console" ;
+  /* (re)use that one (strlen( "CONSOLE=" ) == 8) or a default value */
+  Env [ 4 ] = ( s && * s ) ? s - 8 : "CONSOLE=" CONSOLE ;
 }
 
 static int setup_rlimits ( void )
@@ -65,7 +72,7 @@ static int setup_rlimits ( void )
 int main ( const int argc, char ** argv )
 {
   if ( 1 < getpid () ) {
-    (void) fputs ( "\ninit: Must run as init process (PID 1).\n\n", stderr ) ;
+    (void) fputs ( "\ninit: Must run as process #1.\n\n", stderr ) ;
     return 100 ;
   }
 
@@ -89,7 +96,7 @@ int main ( const int argc, char ** argv )
   (void) sethostname ( HOSTNAME, strlen ( HOSTNAME ) ) ;
 
   /* execve(2) into the real BusyBox binary */
-  (void) execve ( BBX, argv, Env ) ;
+  (void) execve ( BB, argv, Env ) ;
   (void) execve ( "/bin/busybox", argv, Env ) ;
   (void) execve ( "/sbin/busybox", argv, Env ) ;
   (void) execve ( "/usr/bin/busybox", argv, Env ) ;

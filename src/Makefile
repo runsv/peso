@@ -106,7 +106,7 @@ libs =
 all :	libs exe
 
 tbinit :	bbinit.c
-	$(CROSS)$(CC) $(LDFLAGS) $(CFLAGS) -DBBX=/bin/toybox -o $@ $^
+	$(CROSS)$(CC) $(LDFLAGS) $(CFLAGS) -DBB=/bin/toybox -o $@ $^
 
 testinit :	reboot.o testinit.o
 	@echo "  LD	$@"
