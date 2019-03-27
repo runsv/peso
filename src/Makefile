@@ -83,7 +83,7 @@ LDFLAGS = -s
 inc = $(wildcard *?.h)
 src = $(wildcard *?.c)
 bin = delay fgrun lux pause pidfsup prcsup rcorder runas runlevel setutmpid
-sbin = bbinit hardreboot hddown killall5 rmcgroup stage1 stage2 stage3 testinit
+sbin = bbinit hardreboot hddown killall5 rmcgroup stage1 stage2 stage3 tbinit testinit
 bins = $(bin) $(sbin)
 libs =
 #inid_obj = main.o reboot.o respawn.o utils.o utmp.o
@@ -104,6 +104,9 @@ libs =
 #	$(CROSS)$(LD) $(LDFLAGS) -o $@ $^
 
 all :	libs exe
+
+tbinit :	bbinit.c
+	$(CROSS)$(CC) $(LDFLAGS) $(CFLAGS) -DBBX=/bin/toybox -o $@ $^
 
 testinit :	reboot.o testinit.o
 	@echo "  LD	$@"

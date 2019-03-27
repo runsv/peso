@@ -52,11 +52,9 @@ static void setup_env ( void )
 static int setup_rlimits ( void )
 {
   struct rlimit rlim ;
-
   rlim . rlim_max = RLIM_INFINITY ;
   (void) getrlimit ( RLIMIT_CORE, & rlim ) ;
   rlim . rlim_cur = 0 ;
-
   return setrlimit ( RLIMIT_CORE, & rlim ) ;
 }
 
@@ -80,6 +78,8 @@ int main ( const int argc, char ** argv )
   setup_env () ;
   (void) umask ( 00022 ) ;
   (void) setup_rlimits () ;
+  (void) setsid () ;
+  (void) setpgid ( 0, 0 ) ;
   (void) chdir ( "/" ) ;
   /* set a default hostname that can be changed later */
   (void) sethostname ( HOSTNAME, strlen ( HOSTNAME ) ) ;
@@ -90,7 +90,7 @@ int main ( const int argc, char ** argv )
   (void) execve ( "/sbin/busybox", argv, Env ) ;
   (void) execve ( "/usr/bin/busybox", argv, Env ) ;
   (void) execve ( "/usr/sbin/busybox", argv, Env ) ;
-  /* not very helpful */
+  /* not too helpful when using our default PATH :-\ */
 #if defined (__GLIBC__) && defined (_GNU_SOURCE)
   (void) execvpe ( "busybox", argv, Env ) ;
 #endif
