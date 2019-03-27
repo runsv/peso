@@ -33,10 +33,11 @@
 #define BBX		"/bin/busybox"
 
 /* default environment to use */
-static char * Env [ 5 ] = {
+static char * Env [ 6 ] = {
   "HOME=/",
   "SHELL=" SHELL,
   "PATH=" PATH,
+  (char *) NULL,
   (char *) NULL,
   (char *) NULL,
 } ;
@@ -44,9 +45,12 @@ static char * Env [ 5 ] = {
 static void setup_env ( void )
 {
   /* see if the kernel has already set the TERM env var for us */
-  char * const s = getenv ( "TERM" ) ;
+  char * s = getenv ( "TERM" ) ;
   /* (re)use that one (strlen( "TERM=" ) == 5) or a default value */
   Env [ 3 ] = ( s && * s ) ? s - 5 : "TERM=linux" ;
+  /* see if the kernel has set up the CONSOLE env var for us */
+  s = getenv ( "CONSOLE" ) ;
+  Env [ 4 ] = ( s && * s ) ? s - 8 : "CONSOLE=/dev/console" ;
 }
 
 static int setup_rlimits ( void )
