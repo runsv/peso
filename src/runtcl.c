@@ -8,7 +8,9 @@
   softlimit_core() etc
   evtl. ulimit -S -c 0 ?
   SysV IPC: msgqueue functions
-  Linux: mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...}
+  Linux:
+    sendfile(2)
+    mount_{procfs,sysfs,devfs,run,...} + seed_{dev,run,...}
     add getmntent(3) based function that searches in a given mtab file
   Ensembles fs + x
 
