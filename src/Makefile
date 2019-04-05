@@ -15,6 +15,12 @@
 
 PREFIX ?= /usr/local
 DESTDIR ?=
+# path to the busybox binary
+BUSYBOX = /bin/busybox
+# path to the toybox binary
+TOYBOX = /bin/toybox
+# path to the sysvinit binary
+SYSVINIT = /sbin/sysv-init
 LUA_MOD_DIR ?= /lib/lua/5.3
 LUA_CMOD_DIR ?= /lib64/lua/5.3
 CROSS ?=
@@ -83,7 +89,7 @@ LDFLAGS = -s
 inc = $(wildcard *?.h)
 src = $(wildcard *?.c)
 bin = delay fgrun lux pause pidfsup prcsup rcorder runas runlevel setutmpid
-sbin = bbinit hardreboot hddown killall5 rmcgroup stage1 stage2 stage3 tbinit testinit
+sbin = bbinit hardreboot hddown killall5 rmcgroup stage1 stage2 stage3 svinit tbinit testinit
 bins = $(bin) $(sbin)
 libs =
 #inid_obj = main.o reboot.o respawn.o utils.o utmp.o
@@ -105,8 +111,14 @@ libs =
 
 all :	libs exe
 
+bbinit :	bbinit.c
+	$(CROSS)$(CC) $(LDFLAGS) $(CFLAGS) -DBB=$(BUSYBOX) -o $@ $^
+
 tbinit :	bbinit.c
-	$(CROSS)$(CC) $(LDFLAGS) $(CFLAGS) -DBB=/bin/toybox -o $@ $^
+	$(CROSS)$(CC) $(LDFLAGS) $(CFLAGS) -DBB=$(TOYBOX) -o $@ $^
+
+svinit :	bbinit.c
+	$(CROSS)$(CC) $(LDFLAGS) $(CFLAGS) -DBB=$(SYSVINIT) -o $@ $^
 
 testinit :	reboot.o testinit.o
 	@echo "  LD	$@"
