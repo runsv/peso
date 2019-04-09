@@ -1534,18 +1534,6 @@ static int objcmd_uexit ( ClientData cd, Tcl_Interp * const T,
   return TCL_OK ;
 }
 
-/*
- * signal handling
- */
-
-static volatile sig_atomic_t got_sig = 0 ;
-
-/* pseudo signal handler */
-static void sighand ( const int sig )
-{
-  got_sig = sig ;
-}
-
 static int objcmd_pause ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -3717,10 +3705,113 @@ static int objcmd_swapoff ( ClientData cd, Tcl_Interp * const T,
 }
 
 /*
- * signal handling functions
+ * signal handling
  */
 
-/* reset given or all signals to their default actions */
+static unsigned long int got_sig = 0 ;
+
+/* pseudo signal handler that stores the received signal in a state var */
+static void signop ( const int s )
+{
+  /* save sig into the correspondig bit of the global state variable */
+  got_sig |= 1 << s ;
+}
+
+/* restore default signal handling */
+static int sigreset ( void )
+{
+  int i, r = 0 ;
+  struct sigaction sa ;
+
+  sa . sa_flags = SA_RESTART ;
+  sa . sa_handler = SIG_DFL ;
+  (void) sigemptyset ( & sa . sa_mask ) ;
+
+  for ( i = 1 ; NSIG > i ; ++ i ) {
+    if ( SIGCHLD != i ) {
+      r += sigaction ( i, & sa, NULL ) ;
+    }
+  }
+
+  sa . sa_handler = signop ;
+  r += sigaction ( SIGCHLD, & sa, NULL ) ;
+  /* unblock everything as we are at it */
+  r += sigprocmask ( SIG_SETMASK, & sa . sa_mask, NULL ) ;
+
+  return r ;
+}
+
+/* make above routine accessible from Tcl code */
+static int objcmd_sigreset ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  sigreset () ;
+  return TCL_OK ;
+}
+
+/* signal handling selfpipe fds */
+static int sigfdin = -1 ;
+static int sigfdout = -1 ;
+
+/* signal handler that writes the received signal into the selfpipe */
+static void sighand ( const int s )
+{
+  if ( 0 < s && NSIG > s && 0 <= sigfdout ) {
+    (void) write ( sigfdout, & s, sizeof ( int ) ) ;
+  }
+}
+
+/* catch a given signal with above handler */
+static int sigcatch ( const int s )
+{
+  if ( 0 < s && NSIG > s ) {
+    struct sigaction sa ;
+
+    sa . sa_flags = SA_RESTART ;
+    sa . sa_handler = sighand ;
+    (void) sigemptyset ( & sa . sa_mask ) ;
+
+    return sigaction ( s, & sa, NULL ) ;
+  }
+
+  return -1 ;
+}
+
+/* set up signal handling via selfpipe */
+static int siginit ( void )
+{
+  int p [ 2 ] = { -1 } ;
+
+  /* initialize the used global variables */
+  got_sig = 0 ;
+  sigfdin = sigfdout = -1 ;
+  /* restore default signal handling */
+  sigreset () ;
+
+  /* create the selfpipe used for signal handling */
+  if ( pipe2 ( p, O_NONBLOCK | O_CLOEXEC
+#if defined (OSLinux)
+    | O_DIRECT
+#endif
+    ) )
+  { return -1 ; }
+
+  /* save self pipe fds */
+  sigfdin = p [ 0 ] ;
+  sigfdout = p [ 1 ] ;
+
+  return 0 ;
+}
+
+static int objcmd_siginit ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( siginit () ) {
+    return psx_err ( T, errno, "siginit" ) ;
+  }
+
+  return TCL_OK ;
+}
 
 /* tclsh application init function */
 int Tcl_AppInit ( Tcl_Interp * const T )
@@ -3908,6 +3999,9 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::reboot", objcmd_reboot, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::halt", objcmd_halt, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::poweroff", objcmd_poweroff, NULL, NULL ) ;
+  /* signal handling */
+  (void) Tcl_CreateObjCommand ( T, "::ux::sigreset", objcmd_sigreset, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::siginit", objcmd_sigreset, NULL, NULL ) ;
 
   /* add platform specific (object) commands to current interpreter */
 #if defined (OSbsd)
@@ -4035,18 +4129,19 @@ int main ( const int argc, char ** argv )
   const uid_t uid = getuid () ;
   const gid_t gid = getgid () ;
 
+  /* initialize global vars */
+  got_sig = 0 ;
+  sigfdin = sigfdout = -1 ;
+  progname = ( ( 0 < argc ) && * argv && ** argv ) ? * argv : NULL ;
   /* drop privileges: reset euid/egid to real uid/gid */
   (void) setgid ( gid ) ;
   (void) setuid ( uid ) ;
-
   /* secure file creation mask */
   (void) umask ( 00022 | ( 00077 & umask ( 00077 ) ) ) ;
-
   /* set the SOFT (!!) limit for core dumps to zero */
   (void) set_rlimits () ;
-
-  /* initialize global vars */
-  progname = ( ( 0 < argc ) && * argv && ** argv ) ? * argv : NULL ;
+  /* restore default signal handling */
+  sigreset () ;
 
   /* T(cl,k)_Main create the new intereter for us */
 #ifdef WANT_TK
