@@ -3708,6 +3708,7 @@ static int objcmd_swapoff ( ClientData cd, Tcl_Interp * const T,
  * signal handling
  */
 
+/* global var to store handled signals */
 static unsigned long int got_sig = 0 ;
 
 /* pseudo signal handler that stores the received signal in a state var */
@@ -3718,7 +3719,7 @@ static void signop ( const int s )
 }
 
 /* restore default signal handling */
-static int sigreset ( void )
+static int sigreset ( const int s )
 {
   int i, r = 0 ;
   struct sigaction sa ;
@@ -3727,25 +3728,50 @@ static int sigreset ( void )
   sa . sa_handler = SIG_DFL ;
   (void) sigemptyset ( & sa . sa_mask ) ;
 
+  if ( 0 < s && NSIG > s ) {
+    i = sigaction ( s, & sa, NULL ) ;
+    (void) sigaddset ( & sa . sa_mask, s ) ;
+    return i + sigprocmask ( SIG_UNBLOCK, & sa . sa_mask, NULL ) ;
+  }
+
   for ( i = 1 ; NSIG > i ; ++ i ) {
-    if ( SIGCHLD != i ) {
+    if ( SIGKILL != i && SIGSTOP != i && SIGCHLD != i ) {
       r += sigaction ( i, & sa, NULL ) ;
     }
   }
 
+  /* catch SIGCHLD with above pseudo handler */
   sa . sa_handler = signop ;
   r += sigaction ( SIGCHLD, & sa, NULL ) ;
   /* unblock everything as we are at it */
-  r += sigprocmask ( SIG_SETMASK, & sa . sa_mask, NULL ) ;
-
-  return r ;
+  return r + sigprocmask ( SIG_SETMASK, & sa . sa_mask, NULL ) ;
 }
 
 /* make above routine accessible from Tcl code */
 static int objcmd_sigreset ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
-  sigreset () ;
+  if ( 1 < objc ) {
+    int i, j ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+
+      if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK &&
+        0 < j && NSIG > j )
+      {
+        if ( sigreset ( j ) ) {
+          return psx_err ( T, errno, "sigreset" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "illegal signal number" ) ;
+        return TCL_ERROR ;
+      }
+    }
+  } else if ( sigreset ( -1 ) ) {
+    return psx_err ( T, errno, "sigreset" ) ;
+  }
+
   return TCL_OK ;
 }
 
@@ -3786,7 +3812,7 @@ static int siginit ( void )
   got_sig = 0 ;
   sigfdin = sigfdout = -1 ;
   /* restore default signal handling */
-  sigreset () ;
+  (void) sigreset ( -1 ) ;
 
   /* create the selfpipe used for signal handling */
   if ( pipe2 ( p, O_NONBLOCK | O_CLOEXEC
@@ -4141,9 +4167,8 @@ int main ( const int argc, char ** argv )
   /* set the SOFT (!!) limit for core dumps to zero */
   (void) set_rlimits () ;
   /* restore default signal handling */
-  sigreset () ;
-
-  /* T(cl,k)_Main create the new intereter for us */
+  (void) sigreset ( -1 ) ;
+  /* T(cl,k)_Main creates a new intereter for us */
 #ifdef WANT_TK
   Tk_Main ( argc, argv, Tcl_AppInit ) ;
 #else
