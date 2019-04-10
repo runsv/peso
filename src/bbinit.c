@@ -67,7 +67,6 @@ static void exec_into ( char * const x, char ** av )
   char * b = (char *) NULL ;
 
   (void) fflush ( NULL ) ;
-  /* not too helpful when using our default PATH :-\ */
   (void) execve ( x, av, Env ) ;
   perror ( "execve(2) failed" ) ;
   (void) fflush ( NULL ) ;
@@ -107,13 +106,17 @@ static void run_init ( const int argc, char ** argv )
     exec_into ( BB, av ) ;
     exec_into ( "/bin/busybox", av ) ;
     exec_into ( "/bin/toybox", av ) ;
+    /*
     exec_into ( "/sbin/sysv-init", av ) ;
+    */
   } else {
     argv [ 0 ] = "init" ;
     exec_into ( BB, argv ) ;
     exec_into ( "/bin/busybox", argv ) ;
     exec_into ( "/bin/toybox", argv ) ;
+    /*
     exec_into ( "/sbin/sysv-init", argv ) ;
+    */
   }
 }
 
@@ -151,14 +154,14 @@ static void sh ( void )
 
 static int rescue ( void )
 {
-  (void) fprintf ( stderr,
-    "\ninit: Could not find the \"busybox\" binary in PATH\n\t%s\ninit: Execing into sulogin ...\n\n"
-    , PATH ) ;
+  (void) fputs (
+    "\ninit: Failed to start the real \"init\".\ninit: Trying to exec into \"sulogin\" ...\n\n"
+    , stderr ) ;
   (void) fflush ( NULL ) ;
   sulogin () ;
-  (void) fprintf ( stderr,
-    "\ninit: Could not find the \"sulogin\" utility.\ninit: Execing into the \"%s\" shell ...\n\n"
-    , SHELL ) ;
+  (void) fputs (
+    "\ninit: Failed to start \"sulogin\".\ninit: Trying to exec into a shell ...\n\n"
+    , stderr ) ;
   sh () ;
   (void) fflush ( NULL ) ;
   /* very deep shit: kernel panic ahead */
@@ -186,12 +189,10 @@ int main ( const int argc, char ** argv )
   (void) setsid () ;
   (void) setpgid ( 0, 0 ) ;
   (void) chdir ( "/" ) ;
-
   /* set a preliminary default hostname that can be easily changed later */
 #ifdef HOSTNAME
   (void) sethostname ( HOSTNAME, strlen ( HOSTNAME ) ) ;
 #endif
-
   run_init ( argc, argv ) ;
 
   return rescue () ;
