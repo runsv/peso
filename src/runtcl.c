@@ -3800,6 +3800,7 @@ static int sigcatch ( const int s )
     return sigaction ( s, & sa, NULL ) ;
   }
 
+  errno = EINVAL ;
   return -1 ;
 }
 
@@ -4152,16 +4153,14 @@ int unix_Init ( Tcl_Interp * T )
 int main ( const int argc, char ** argv )
 {
   //int i = 0 ;
-  const uid_t uid = getuid () ;
-  const gid_t gid = getgid () ;
 
   /* initialize global vars */
   got_sig = 0 ;
   sigfdin = sigfdout = -1 ;
   progname = ( ( 0 < argc ) && * argv && ** argv ) ? * argv : NULL ;
   /* drop privileges: reset euid/egid to real uid/gid */
-  (void) setgid ( gid ) ;
-  (void) setuid ( uid ) ;
+  (void) setgid ( getgid () ) ;
+  (void) setuid ( getuid () ) ;
   /* secure file creation mask */
   (void) umask ( 00022 | ( 00077 & umask ( 00077 ) ) ) ;
   /* set the SOFT (!!) limit for core dumps to zero */
