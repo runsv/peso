@@ -4058,6 +4058,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   /* signal handling */
   (void) Tcl_CreateObjCommand ( T, "::ux::sigreset", objcmd_sigreset, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::sigcatch", objcmd_sigcatch, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sigtrap", objcmd_sigcatch, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::siginit", objcmd_siginit, NULL, NULL ) ;
 
   /* add platform specific (object) commands to current interpreter */
