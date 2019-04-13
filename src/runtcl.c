@@ -3804,7 +3804,36 @@ static int sigcatch ( const int s )
   return -1 ;
 }
 
-/* set up signal handling via selfpipe */
+/* make above function accessible from Tcl code */
+static int objcmd_sigcatch ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+
+      if ( Tcl_GetIntFromObj ( T, objv [ i ], & j ) == TCL_OK &&
+        0 < j && NSIG > j )
+      {
+        if ( sigcatch ( j ) ) {
+          return psx_err ( T, errno, "sigaction" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "illegal signal number" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "signo [signo ...]" ) ;
+  return TCL_ERROR ;
+}
+
+/* start signal handling via selfpipe */
 static int siginit ( void )
 {
   int p [ 2 ] = { -1 } ;
@@ -4028,7 +4057,8 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::poweroff", objcmd_poweroff, NULL, NULL ) ;
   /* signal handling */
   (void) Tcl_CreateObjCommand ( T, "::ux::sigreset", objcmd_sigreset, NULL, NULL ) ;
-  (void) Tcl_CreateObjCommand ( T, "::ux::siginit", objcmd_sigreset, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::sigcatch", objcmd_sigcatch, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::siginit", objcmd_siginit, NULL, NULL ) ;
 
   /* add platform specific (object) commands to current interpreter */
 #if defined (OSbsd)
