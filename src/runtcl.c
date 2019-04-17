@@ -2915,6 +2915,39 @@ static int objcmd_nanosleep ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
+static int objcmd_getenv ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i = -1 ;
+    const char * const name = Tcl_GetStringFromObj ( objv [ 1 ], & i ) ;
+
+    if ( ( 0 < i ) && name && * name ) {
+      const char * const s = getenv ( name ) ;
+
+      if ( s ) {
+        if ( * s ) {
+          Tcl_SetStringObj ( Tcl_GetObjResult ( T ), s, -1 ) ;
+        } else {
+          Tcl_SetStringObj ( Tcl_GetObjResult ( T ), "", 0 ) ;
+        }
+
+        return TCL_OK ;
+      }
+
+      Tcl_AddErrorInfo ( T, name ) ;
+      Tcl_AddErrorInfo ( T, ": not found" ) ;
+      return TCL_ERROR ;
+    }
+
+    Tcl_AddErrorInfo ( T, "variable name required" ) ;
+    return TCL_ERROR ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "name" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_clearenv ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -4131,6 +4164,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::nanosleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nsleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::delay", objcmd_delay, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::getenv", objcmd_getenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::clearenv", objcmd_clearenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unsetenv", objcmd_unsetenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::putenv", objcmd_putenv, NULL, NULL ) ;
