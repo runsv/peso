@@ -2915,6 +2915,34 @@ static int objcmd_nanosleep ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
+static int objcmd_putenv ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * s = NULL ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+      s = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && s && * s ) {
+        if ( Tcl_PutEnv ( s ) != TCL_OK ) {
+          return psx_err ( T, errno, "putenv" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "\"var=value\" assignment strings required" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "var=value [var=value ...]" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_getcwd ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -4020,6 +4048,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::nanosleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::nsleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::delay", objcmd_delay, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::putenv", objcmd_putenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getcwd", objcmd_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cwd", objcmd_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::chdir", objcmd_chdir, NULL, NULL ) ;
