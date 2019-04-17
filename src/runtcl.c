@@ -2981,6 +2981,51 @@ static int objcmd_putenv ( ClientData cd, Tcl_Interp * const T,
   return TCL_ERROR ;
 }
 
+/* helper function that calls setenv(3) */
+static int setEnvVar ( Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv, const int o )
+{
+  if ( 2 < objc ) {
+    int j, k, i = 1 ;
+    const char * s = NULL ;
+    const char * v = NULL ;
+
+    while ( objc > ( 1 + i ) ) {
+      j = k = -1 ;
+      s = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+      v = Tcl_GetStringFromObj ( objv [ 1 + i ], & k ) ;
+
+      if ( ( 0 < j ) && ( 0 <= k ) && s && v && * s ) {
+        if ( setenv ( s, v, o ) ) {
+          return psx_err ( T, errno, "setenv" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "variable name and value string pairs required" ) ;
+        return TCL_ERROR ;
+      }
+
+      i += 2 ;
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "name value [name value ...]" ) ;
+  return TCL_ERROR ;
+}
+
+static int objcmd_setenv ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return setEnvVar ( T, objc, objv, 1 ) ;
+}
+
+static int objcmd_setenv2 ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  return setEnvVar ( T, objc, objv, 0 ) ;
+}
+
 static int objcmd_getcwd ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -4089,6 +4134,8 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::clearenv", objcmd_clearenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::unsetenv", objcmd_unsetenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::putenv", objcmd_putenv, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setenv", objcmd_setenv, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::setenv2", objcmd_setenv2, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getcwd", objcmd_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cwd", objcmd_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::chdir", objcmd_chdir, NULL, NULL ) ;
