@@ -2925,6 +2925,34 @@ static int objcmd_clearenv ( ClientData cd, Tcl_Interp * const T,
   return TCL_OK ;
 }
 
+static int objcmd_unsetenv ( ClientData cd, Tcl_Interp * const T,
+  const int objc, Tcl_Obj * const * objv )
+{
+  if ( 1 < objc ) {
+    int i, j ;
+    const char * s = NULL ;
+
+    for ( i = 1 ; objc > i ; ++ i ) {
+      j = -1 ;
+      s = Tcl_GetStringFromObj ( objv [ i ], & j ) ;
+
+      if ( ( 0 < j ) && s && * s ) {
+        if ( unsetenv ( s ) ) {
+          return psx_err ( T, errno, "unsetenv" ) ;
+        }
+      } else {
+        Tcl_AddErrorInfo ( T, "variable name required" ) ;
+        return TCL_ERROR ;
+      }
+    }
+
+    return TCL_OK ;
+  }
+
+  Tcl_WrongNumArgs ( T, 1, objv, "name [name ...]" ) ;
+  return TCL_ERROR ;
+}
+
 static int objcmd_putenv ( ClientData cd, Tcl_Interp * const T,
   const int objc, Tcl_Obj * const * objv )
 {
@@ -2941,7 +2969,7 @@ static int objcmd_putenv ( ClientData cd, Tcl_Interp * const T,
           return psx_err ( T, errno, "putenv" ) ;
         }
       } else {
-        Tcl_AddErrorInfo ( T, "\"var=value\" assignment strings required" ) ;
+        Tcl_AddErrorInfo ( T, "\"name=value\" variable assignment string required" ) ;
         return TCL_ERROR ;
       }
     }
@@ -2949,7 +2977,7 @@ static int objcmd_putenv ( ClientData cd, Tcl_Interp * const T,
     return TCL_OK ;
   }
 
-  Tcl_WrongNumArgs ( T, 1, objv, "var=value [var=value ...]" ) ;
+  Tcl_WrongNumArgs ( T, 1, objv, "name=value [name=value ...]" ) ;
   return TCL_ERROR ;
 }
 
@@ -4059,6 +4087,7 @@ int Tcl_AppInit ( Tcl_Interp * const T )
   (void) Tcl_CreateObjCommand ( T, "::ux::nsleep", objcmd_nanosleep, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::delay", objcmd_delay, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::clearenv", objcmd_clearenv, NULL, NULL ) ;
+  (void) Tcl_CreateObjCommand ( T, "::ux::unsetenv", objcmd_unsetenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::putenv", objcmd_putenv, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::getcwd", objcmd_getcwd, NULL, NULL ) ;
   (void) Tcl_CreateObjCommand ( T, "::ux::cwd", objcmd_getcwd, NULL, NULL ) ;
