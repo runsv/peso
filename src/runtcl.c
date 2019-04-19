@@ -3868,6 +3868,7 @@ static int sigreset ( const int s )
   int i, r = 0 ;
   struct sigaction sa ;
 
+  (void) memset ( & sa, 0, sizeof ( sa ) ) ;
   sa . sa_flags = SA_RESTART ;
   sa . sa_handler = SIG_DFL ;
   (void) sigemptyset ( & sa . sa_mask ) ;
@@ -3937,6 +3938,7 @@ static int sigcatch ( const int s )
   if ( 0 < s && NSIG > s ) {
     struct sigaction sa ;
 
+    (void) memset ( & sa, 0, sizeof ( sa ) ) ;
     sa . sa_flags = SA_RESTART ;
     sa . sa_handler = sighand ;
     (void) sigemptyset ( & sa . sa_mask ) ;
