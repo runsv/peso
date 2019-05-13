@@ -110,3 +110,19 @@ def_env () {
   cd /
 }
 
+numlock_on () {
+  local i
+
+  for i in 1 2 3 4 5 6 7 8 ; do
+    setleds +num < /dev/tty$i > /dev/null
+  done
+}
+
+numlock_off () {
+  local i
+
+  for i in 1 2 3 4 5 6 7 8 ; do
+    setleds -num < /dev/tty$i > /dev/null
+  done
+}
+

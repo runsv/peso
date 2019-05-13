@@ -11,6 +11,74 @@ include "pesi.h"
 /* constant with an unique address to use as key in the Lua registry */
 static const char Key = 'K' ;
 
+/* helper function that parses a given integer literal string */
+static lua_Integer str2i ( const int b, const char * const s )
+{
+  if ( ( 1 < b ) && ( 37 > b ) && s && * s ) {
+    lua_Integer r = 0 ;
+    int i = 1, j = str_len ( s ) ;
+
+    while ( 0 < j && '\0' != s [ -- j ] ) {
+      int c = s [ j ] ;
+
+      if ( ( 0 < c ) && isdigit ( c ) ) {
+        c -= '0' ;
+      } else if ( ( 0 < c ) && isalpha ( c ) && isascii ( c ) ) {
+        c = 10 + tolower ( c ) - 'a' ;
+      } else {
+        continue ;
+      }
+
+      if ( 0 <= c && b > c ) {
+        r += i * c ;
+        i *= b ;
+      } else {
+        return -1 ;
+      }
+    }
+
+    if ( 1 < i ) { return r ; }
+  }
+
+  return -1 ;
+}
+
+/*
+ * @maxval: maximum value. don't consume next char if value will exceed @maxval
+ * @n: maximum number of characters to consume doing the conversion
+ *
+ * Returns: converted number. If there is no conversion 0 is returned and
+ *          *@endptr = @str
+ *
+ * Not a complete replacement for strtol yet, Does not process base prefixes,
+ * nor +/- sign yet.
+ *
+ * - take the largest sequence of character that is in range of 0-@maxval
+ * - will consume the minimum of @maxlen or @base digits in @maxval
+ * - if there is not n valid characters for the base only the n-1 will be taken
+ *   eg. for the sequence string 4z with base 16 only 4 will be taken as the
+ *   hex number
+static long strntol(const char *str, const char **endptr, int base, long maxval,
+	     size_t n)
+{
+	long c, val = 0;
+
+	if (base > 1 && base < 37) {
+		for (; n && (c = chrtoi(*str, base)) != -1; str++, n--) {
+			long tmp = (val * base) + c;
+			if (tmp > maxval)
+				break;
+			val = tmp;
+		}
+	}
+
+	if (endptr)
+		*endptr = str;
+
+	return val;
+}
+ */
+
 /* helper functions for all other Lua wrapper functions */
 /*
 static int res0 ( lua_State * const L, const int r )
@@ -275,6 +343,68 @@ static int subarr ( lua_State * const L )
   }
 
   return 1 ;
+}
+
+/* try to parse the given octal integer literal strings as integers */
+static int Lstr2i ( lua_State * const L, const int b )
+{
+  const int n = lua_gettop ( L ) ;
+
+  if ( 0 < n ) {
+    int i ;
+
+    for ( i = 1 ; n >= i ; ++ i ) {
+      const char * const s = luaL_checkstring ( L, i ) ;
+
+      if ( s && * s ) {
+        const lua_Integer u = str2i ( b, s ) ;
+
+        if ( 0 > u ) {
+          return luaL_argerror ( L, i, "string is no integer literal for given base" ) ;
+        }
+
+        lua_pushinteger ( L, u ) ;
+        lua_replace ( L, i ) ;
+      } else {
+        return luaL_argerror ( L, i, "illegal integer literal string" ) ;
+      }
+    }
+
+    return n ;
+  }
+
+  return luaL_error ( L, "base %d integer literal string required", b ) ;
+}
+
+static int Lstr2int ( lua_State * const L )
+{
+  if ( 1 < lua_gettop ( L ) ) {
+    const int b = (int) luaL_checkinteger ( L, 1 ) ;
+    lua_pop ( L, 1 ) ;
+
+    if ( 1 < b && 37 > b ) {
+      return Lstr2i ( L, b ) ;
+    }
+
+    return luaL_error ( L, "illegal representation base %d", b ) ;
+  }
+
+  return luaL_error ( L, "representation base and integer literal string args required" ) ;
+}
+
+static int Lstr2bi ( lua_State * const L )
+{
+  return Lstr2i ( L, 2 ) ;
+}
+
+static int Lstr2oi ( lua_State * const L )
+{
+  return Lstr2i ( L, 8 ) ;
+}
+
+static int Lstr2xi ( lua_State * const L )
+{
+  return Lstr2i ( L, 16 ) ;
 }
 
 /* convert a string consisting of on octal integer literal
@@ -1693,6 +1823,10 @@ static const luaL_Reg sys_func [ ] =
   { "bitrshift",		Lbitrshift	},
   { "add",			add		},
   { "subarr",			subarr		},
+  { "str2int",			Lstr2int	},
+  { "str2bi",			Lstr2bi		},
+  { "str2oi",			Lstr2oi		},
+  { "str2xi",			Lstr2xi		},
   { "octintstr",		Loctintstr	},
   { "chomp",			Lchomp		},
   { "get_errno",		get_errno	},
@@ -1724,8 +1858,10 @@ static const luaL_Reg sys_func [ ] =
 /* open function for Lua to open this very module/library */
 static int openMod ( lua_State * const L )
 {
+  /*
   struct utsname uts ;
-  /* extern char ** environ ;		*/
+  extern char ** environ ;
+  */
 
   /* create a metatable for directory iterators */
   (void) dir_create_meta ( L ) ;
