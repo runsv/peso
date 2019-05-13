@@ -21,7 +21,9 @@ static lua_Integer str2i ( const int b, const char * const s )
     while ( 0 < j && '\0' != s [ -- j ] ) {
       int c = s [ j ] ;
 
-      if ( ( 0 < c ) && isdigit ( c ) ) {
+      if ( LUA_MAXINTEGER <= r ) {
+        return r ;
+      } else if ( ( 0 < c ) && isdigit ( c ) ) {
         c -= '0' ;
       } else if ( ( 0 < c ) && isalpha ( c ) && isascii ( c ) ) {
         c = 10 + tolower ( c ) - 'a' ;
@@ -29,10 +31,18 @@ static lua_Integer str2i ( const int b, const char * const s )
         continue ;
       }
 
-      if ( 0 <= c && b > c ) {
-        r += i * c ;
+      if ( 0 > c ) {
+        return -1 ;
+      } else if ( 0 == c ) {
         i *= b ;
-      } else {
+      } else if ( 0 < c && b > c ) {
+        c *= i ;
+
+        if ( LUA_MAXINTEGER <= c + r ) { return r ; }
+
+        r += c ;
+        i *= b ;
+      } else if ( b <= c ) {
         return -1 ;
       }
     }
@@ -44,12 +54,7 @@ static lua_Integer str2i ( const int b, const char * const s )
 }
 
 /*
- * @maxval: maximum value. don't consume next char if value will exceed @maxval
- * @n: maximum number of characters to consume doing the conversion
- *
- * Returns: converted number. If there is no conversion 0 is returned and
  *          *@endptr = @str
- *
  * Not a complete replacement for strtol yet, Does not process base prefixes,
  * nor +/- sign yet.
  *
